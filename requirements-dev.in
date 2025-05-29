@@ -1,0 +1,18 @@
+# Dependencias de desarrollo
+-r requirements.in
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-qt>=4.2.0
+
+# Linting y formateo
+black>=23.7.0
+flake8>=6.0.0
+isort>=5.12.0
+
+# Pre-commit hooks
+pre-commit>=3.3.0
+
+# Documentación
+sphinx>=7.1.0 
