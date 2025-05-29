@@ -22,8 +22,8 @@ Sistema de gestión moderno desarrollado en Python con PyQt6 y SQLite, diseñado
 
 ### 1. Clonar el repositorio
 ```bash
-git clone <repository-url>
-cd Almacena
+git clone https://github.com/FmBlueSystem/Almacen.git
+cd Almacen
 ```
 
 ### 2. Crear entorno virtual
@@ -257,7 +257,7 @@ def test_main_window(qtbot):
 
 ## 📄 Licencia
 
-[Especificar licencia del proyecto]
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
 ## 👥 Autores
 
@@ -265,8 +265,16 @@ def test_main_window(qtbot):
 
 ## 🎯 Roadmap
 
-- [ ] Interfaz principal con Material Design 3
+- [x] ~~Entorno virtual y dependencias~~
+- [x] ~~Estructura modular del proyecto~~
+- [x] ~~Base de datos SQLite con migraciones~~
+- [x] ~~Configuración con variables de entorno~~
+- [x] ~~Control de versiones Git~~
+- [x] ~~Documentación completa~~
+- [x] ~~Interfaz Material Design 3~~
+- [x] ~~Arquitectura MVC implementada~~
 - [ ] Sistema de internacionalización
+- [ ] Testing completo con pytest
 - [ ] Pipeline CI/CD completo
 - [ ] Pre-commit hooks
 - [ ] Documentación con Sphinx
@@ -274,4 +282,4 @@ def test_main_window(qtbot):
 
 ---
 
-Para más información, consultar la documentación en `docs/` o contactar al equipo de desarrollo. 
+Para más información, consultar la documentación en `docs/` o contactar al equipo de desarrollo.
