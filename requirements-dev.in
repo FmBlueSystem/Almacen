@@ -1,18 +1,23 @@
-# Dependencias de desarrollo
--r requirements.in
-
-# Testing
-pytest>=7.4.0
-pytest-cov>=4.1.0
+# Herramientas de desarrollo
+pytest>=7.3.1
 pytest-qt>=4.2.0
-
-# Linting y formateo
-black>=23.7.0
+pytest-cov>=4.1.0
+black>=23.3.0
 flake8>=6.0.0
-isort>=5.12.0
+mypy>=1.3.0
+pip-tools>=7.1.0
 
-# Pre-commit hooks
-pre-commit>=3.3.0
+# Herramientas de documentación
+sphinx>=7.0.1
+sphinx-rtd-theme>=1.2.0
 
-# Documentación
-sphinx>=7.1.0 
+# Herramientas de testing y QA
+pytest-benchmark>=4.0.0
+pytest-randomly>=3.12.0
+pytest-xdist>=3.3.1
+pre-commit>=3.3.1
+
+# Generación de datos de prueba
+numpy>=1.24.0
+scipy>=1.10.0
+ffmpeg-python>=0.2.0

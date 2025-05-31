@@ -1,3 +1,9 @@
-# Dependencias de producción
-PyQt6>=6.7.0
-python-dotenv>=1.0.0 
+# Dependencias principales
+PyQt6>=6.4.0
+python-dotenv>=1.0.0
+mutagen>=1.46.0
+sqlite-utils>=3.35.0
+
+# Dependencias opcionales pero recomendadas
+pathlib>=1.0.1  # Para manejo de rutas multiplataforma
+typing-extensions>=4.5.0  # Para anotaciones de tipo en Python < 3.11

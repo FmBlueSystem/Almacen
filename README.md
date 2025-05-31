@@ -1,179 +1,109 @@
-# Almacena 📦
+# Almacena - Sistema de Gestión de Audio
 
-Sistema de gestión moderno desarrollado en Python con PyQt6 y SQLite, diseñado para desarrollo asistido por IA.
+Aplicación de escritorio para gestionar y organizar archivos de audio, con soporte para importación de metadatos y visualización en modo pantalla completa.
 
-## 🚀 Características
+## Características
 
-- **Interfaz moderna**: GUI con PyQt6 siguiendo Material Design 3
-- **Base de datos robusta**: SQLite con sistema de migraciones versionadas
-- **Arquitectura limpia**: Separación clara entre capas (UI, Views, Models, Services)
-- **Configuración flexible**: Variables de entorno con python-dotenv
-- **Testing completo**: Pytest con cobertura y testing de UI
-- **CI/CD**: Pipeline automatizado con linting y validaciones
-- **Desarrollo asistido por IA**: Documentación clara y prompts precisos
+- 🎵 Importación de archivos de audio (MP3, WAV, FLAC, M4A)
+- 📊 Visualización en tabla con paginación
+- 🔍 Búsqueda y filtrado por título, artista y género
+- 🎨 Interfaz moderna con Material Design 3
+- 📱 Modo pantalla completa adaptativo
+- 🌍 Soporte para internacionalización
+- 💾 Base de datos SQLite con respaldo
 
-## 📋 Requisitos
+## Requisitos
 
-- Python 3.13.3 o superior
-- Sistema operativo: macOS, Windows, Linux
-- Memoria RAM: 512MB mínimo
+- Python 3.10 o superior
+- Sistema de ventanas compatible con Qt6
+- Espacio en disco para base de datos
+- Dependencias listadas en requirements.txt
 
-## 🛠️ Instalación
+## Instalación
 
-### 1. Clonar el repositorio
+1. Clonar el repositorio:
 ```bash
-git clone https://github.com/FmBlueSystem/Almacen.git
-cd Almacen
+git clone https://github.com/usuario/almacena.git
+cd almacena
 ```
 
-### 2. Crear entorno virtual
+2. Crear y activar entorno virtual:
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# o
-.venv\Scripts\activate     # Windows
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
 ```
 
-### 3. Instalar dependencias
+3. Instalar dependencias:
 ```bash
-# Producción
 pip install -r requirements.txt
-
-# Desarrollo
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.txt  # Para desarrollo
 ```
 
-### 4. Configurar variables de entorno
+4. Inicializar la aplicación:
 ```bash
-cp env.example .env
-# Editar .env con tu configuración
+python scripts/init_app.py
 ```
 
-### 5. Inicializar base de datos
-```bash
-python scripts/init_db.py
-```
+## Uso
 
-### 6. Ejecutar aplicación
+1. Ejecutar la aplicación:
 ```bash
 python main.py
 ```
 
-## 🏗️ Estructura del Proyecto
+2. La aplicación iniciará en modo pantalla completa
+3. Usar los botones de la barra de herramientas para importar música
+4. Utilizar los filtros para buscar canciones
+5. La tabla se actualiza automáticamente y muestra la paginación
+
+## Estructura del Proyecto
 
 ```
-Almacena/
-├── .venv/                  # Entorno virtual
-├── assets/                 # Recursos estáticos
-│   ├── icons/             # Iconos de la aplicación
-│   ├── images/            # Imágenes
-│   └── translations/      # Archivos de traducción
-├── data/                  # Base de datos
-├── docs/                  # Documentación
-├── logs/                  # Archivos de log
-├── scripts/               # Scripts de utilidad
-│   ├── init_db.py        # Inicializar base de datos
-│   └── test_config.py    # Probar configuración
-├── src/                   # Código fuente
-│   ├── database/         # Acceso a datos
-│   │   ├── connection.py # Conexión SQLite
-│   │   └── migrations.py # Sistema de migraciones
-│   ├── models/           # Modelos de datos
-│   ├── services/         # Lógica de negocio
-│   ├── ui/              # Componentes UI
-│   ├── utils/           # Utilidades
-│   │   └── config.py    # Configuración
-│   └── views/           # Ventanas y diálogos
-├── tests/               # Pruebas
-│   ├── integration/     # Tests de integración
-│   ├── ui/             # Tests de interfaz
-│   └── unit/           # Tests unitarios
-├── main.py             # Punto de entrada
-├── requirements.in     # Dependencias producción
-├── requirements-dev.in # Dependencias desarrollo
-└── .env               # Variables de entorno
+almacena/
+├── assets/             # Recursos estáticos
+│   ├── icons/         # Iconos de la aplicación
+│   ├── images/        # Imágenes
+│   └── translations/  # Archivos de traducción
+├── data/              # Datos y base de datos
+│   └── backups/      # Respaldos automáticos
+├── docs/             # Documentación
+├── logs/            # Registros de la aplicación
+├── scripts/         # Scripts de utilidad
+├── src/             # Código fuente
+│   ├── database/   # Conexión y migraciones
+│   ├── models/     # Modelos de datos
+│   ├── services/   # Lógica de negocio
+│   ├── ui/         # Archivos de interfaz
+│   ├── utils/      # Utilidades
+│   └── views/      # Vistas y controladores
+└── tests/          # Pruebas automatizadas
 ```
 
-## 🔧 Comandos Útiles
+## Desarrollo
 
-### Gestión de dependencias
+Para contribuir al desarrollo:
+
+1. Instalar dependencias de desarrollo:
 ```bash
-# Actualizar requirements.txt
-pip-compile requirements.in
-
-# Actualizar requirements-dev.txt
-pip-compile requirements-dev.in
-
-# Instalar nuevas dependencias
-pip-sync requirements-dev.txt
+pip install -r requirements-dev.txt
 ```
 
-### Base de datos
+2. Activar pre-commit:
 ```bash
-# Inicializar BD
-python scripts/init_db.py
-
-# Backup manual
-cp data/almacena.db data/backups/backup_$(date +%Y%m%d_%H%M%S).db
+pre-commit install
 ```
 
-### Testing
+3. Ejecutar pruebas:
 ```bash
-# Ejecutar todos los tests
 pytest
-
-# Con cobertura
-pytest --cov=src --cov-report=html
-
-# Tests específicos
-pytest tests/unit/
-pytest tests/integration/
-pytest tests/ui/
 ```
 
-### Linting y formateo
-```bash
-# Formatear código
-black src/ tests/
+## Configuración
 
-# Ordenar imports
-isort src/ tests/
+La configuración se realiza mediante variables de entorno en el archivo `.env`:
 
-# Linting
-flake8 src/ tests/
-```
-
-## 🌿 Flujo de Trabajo Git
-
-### Estructura de ramas
-- `main`: Producción estable
-- `dev`: Desarrollo e integración
-- `feature/*`: Nuevas funcionalidades
-
-### Flujo recomendado
-```bash
-# Crear nueva funcionalidad
-git checkout dev
-git pull origin dev
-git checkout -b feature/nueva-funcionalidad
-
-# Desarrollar y hacer commits
-git add .
-git commit -m "feat: descripción del cambio"
-
-# Merge a dev
-git checkout dev
-git merge feature/nueva-funcionalidad
-
-# Cuando esté listo para producción
-git checkout main
-git merge dev
-```
-
-## ⚙️ Configuración
-
-### Variables de entorno (.env)
-```bash
+```env
 # Base de datos
 DATABASE_PATH=data/almacena.db
 DATABASE_BACKUP_PATH=data/backups/
@@ -185,101 +115,20 @@ LOG_FILE=logs/almacena.log
 # Interfaz
 THEME=dark
 LANGUAGE=es
-WINDOW_WIDTH=1200
-WINDOW_HEIGHT=800
-
-# Desarrollo
-DEBUG=false
 ```
 
-### Agregar nuevas migraciones
-1. Editar `src/database/migrations.py`
-2. Agregar nueva migración en `_get_all_migrations()`
-3. Ejecutar `python scripts/init_db.py`
+## Licencia
 
-## 🧪 Testing
+Este proyecto está licenciado bajo los términos de la licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
 
-### Estrategia de testing
-- **Unit tests**: Lógica de negocio y utilidades
-- **Integration tests**: Base de datos y servicios
-- **UI tests**: Interfaz de usuario con pytest-qt
+## Contribuir
 
-### Estructura de tests
-```python
-# Ejemplo test unitario
-def test_database_connection():
-    db = DatabaseConnection(":memory:")
-    assert db is not None
+1. Hacer fork del repositorio
+2. Crear una rama para tu característica (`git checkout -b feature/AmazingFeature`)
+3. Hacer commit de tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Hacer push a la rama (`git push origin feature/AmazingFeature`)
+5. Abrir un Pull Request
 
-# Ejemplo test UI
-def test_main_window(qtbot):
-    window = MainWindow()
-    qtbot.addWidget(window)
-    assert window.isVisible()
-```
+## Soporte
 
-## 📝 Convenciones
-
-### Commits
-- `feat:` Nueva funcionalidad
-- `fix:` Corrección de bugs
-- `docs:` Documentación
-- `test:` Tests
-- `refactor:` Refactorización
-- `style:` Formateo de código
-
-### Código
-- **PEP 8** para estilo de código
-- **Type hints** en funciones públicas
-- **Docstrings** para clases y métodos
-- **Logging** en lugar de print()
-
-## 🔒 Seguridad
-
-### Variables sensibles
-- Nunca versionar `.env` en Git
-- Usar `env.example` como plantilla
-- Generar claves únicas para producción
-- Rotar credenciales regularmente
-
-### Backups
-- Backup automático antes de migraciones
-- Backup manual antes de cambios importantes
-- Almacenar backups fuera del proyecto
-
-## 🤝 Contribución
-
-1. Fork del repositorio
-2. Crear rama feature
-3. Desarrollar con tests
-4. Asegurar que pasan todas las validaciones
-5. Crear Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👥 Autores
-
-- **Freddy Molina** - *Desarrollo inicial* - fmolinam@gmail.com
-
-## 🎯 Roadmap
-
-- [x] ~~Entorno virtual y dependencias~~
-- [x] ~~Estructura modular del proyecto~~
-- [x] ~~Base de datos SQLite con migraciones~~
-- [x] ~~Configuración con variables de entorno~~
-- [x] ~~Control de versiones Git~~
-- [x] ~~Documentación completa~~
-- [x] ~~Interfaz Material Design 3~~
-- [x] ~~Arquitectura MVC implementada~~
-- [ ] Sistema de internacionalización
-- [ ] Testing completo con pytest
-- [ ] Pipeline CI/CD completo
-- [ ] Pre-commit hooks
-- [ ] Documentación con Sphinx
-- [ ] Distribución con PyInstaller
-
----
-
-Para más información, consultar la documentación en `docs/` o contactar al equipo de desarrollo.
+Para reportar problemas o solicitar características, por favor usar el [sistema de issues](https://github.com/usuario/almacena/issues).

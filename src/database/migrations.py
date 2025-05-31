@@ -133,6 +133,37 @@ class MigrationManager:
                     CREATE INDEX IF NOT EXISTS idx_configuracion_clave ON configuracion(clave)
                     """
                 ]
+            },
+            {
+                'version': '002',
+                'description': 'Crear tabla de canciones',
+                'sql_commands': [
+                    """
+                    CREATE TABLE IF NOT EXISTS songs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        genre TEXT NOT NULL,
+                        bpm INTEGER,
+                        file_path TEXT UNIQUE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title)
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist)
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_songs_genre ON songs(genre)
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_songs_file_path ON songs(file_path)
+                    """
+                ]
             }
         ]
     
@@ -151,4 +182,4 @@ class MigrationManager:
                 migration['sql_commands']
             )
         
-        logger.info(f"Se aplicaron {len(pending_migrations)} migraciones") 
+        logger.info(f"Se aplicaron {len(pending_migrations)} migraciones")

@@ -1,108 +1,53 @@
 """
-Vista base para separar lógica de presentación
+Vista base para la aplicación
 """
 
-import logging
-from abc import ABC, abstractmethod
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QSize
 
-class BaseView(QWidget, ABC):
-    """Vista base para componentes de interfaz"""
+class BaseView:
+    """Clase base mixin para todas las vistas de la aplicación"""
     
-    # Señales comunes
-    data_changed = pyqtSignal()
-    error_occurred = pyqtSignal(str)
-    status_message = pyqtSignal(str)
-    
-    def __init__(self, parent=None):
+    def get_minimum_size(self) -> QSize:
         """
-        Inicializar vista base
-        
-        Args:
-            parent: Widget padre
-        """
-        super().__init__(parent)
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.init_ui()
-        self.connect_signals()
-    
-    @abstractmethod
-    def init_ui(self):
-        """
-        Inicializar interfaz de usuario
-        Debe ser implementado por las vistas específicas
-        """
-        pass
-    
-    def connect_signals(self):
-        """
-        Conectar señales y slots
-        Puede ser sobrescrito por vistas específicas
-        """
-        pass
-    
-    def show_error(self, message: str):
-        """
-        Mostrar mensaje de error
-        
-        Args:
-            message: Mensaje de error
-        """
-        self.logger.error(message)
-        self.error_occurred.emit(message)
-    
-    def show_status(self, message: str):
-        """
-        Mostrar mensaje de estado
-        
-        Args:
-            message: Mensaje de estado
-        """
-        self.logger.info(message)
-        self.status_message.emit(message)
-    
-    def refresh_data(self):
-        """
-        Refrescar datos de la vista
-        Puede ser sobrescrito por vistas específicas
-        """
-        self.logger.debug("Refreshing view data")
-        self.data_changed.emit()
-    
-    def validate_input(self) -> bool:
-        """
-        Validar entrada de datos
-        Puede ser sobrescrito por vistas específicas
+        Obtener tamaño mínimo recomendado
         
         Returns:
-            bool: True si la entrada es válida
+            QSize: Tamaño mínimo (ancho, alto)
         """
-        return True
+        return QSize(800, 600)
     
-    def clear_form(self):
+    def get_preferred_size(self) -> QSize:
         """
-        Limpiar formulario
-        Puede ser sobrescrito por vistas específicas
-        """
-        pass
-    
-    def load_data(self, data=None):
-        """
-        Cargar datos en la vista
-        Puede ser sobrescrito por vistas específicas
-        
-        Args:
-            data: Datos a cargar
-        """
-        pass
-    
-    def save_data(self):
-        """
-        Guardar datos desde la vista
-        Puede ser sobrescrito por vistas específicas
+        Obtener tamaño preferido
         
         Returns:
-            bool: True si se guardó correctamente
+            QSize: Tamaño preferido (ancho, alto)
         """
-        return True 
+        return QSize(1280, 720)
+    
+    def on_theme_changed(self, is_dark: bool):
+        """
+        Manejar cambio de tema
+        
+        Args:
+            is_dark: True si el tema es oscuro
+        """
+        pass
+    
+    def on_scale_changed(self, scale_factor: float):
+        """
+        Manejar cambio de escala
+        
+        Args:
+            scale_factor: Factor de escala (1.0 = sin escala)
+        """
+        pass
+    
+    def refresh(self):
+        """Actualizar contenido de la vista"""
+        pass
+    
+    def cleanup(self):
+        """Limpiar recursos de la vista"""
+        pass

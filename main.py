@@ -1,60 +1,62 @@
-#!/usr/bin/env python3
 """
-Almacena - Punto de entrada principal
+Aplicación principal
 """
 
 import sys
-import logging
-from pathlib import Path
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer, QEventLoop
+from src.ui import MainWindow
 
-# Agregar src al path para imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+class Application:
+    """Clase principal de la aplicación"""
+    def __init__(self):
+        self.app = QApplication(sys.argv)
+        self.window = None
+        
+    def run(self):
+        """Iniciar la aplicación"""
+        try:
+            # Evitar herencia de estilos del sistema operativo
+            self.app.setStyle("Fusion") 
 
-from ui.main_window import MainWindow
-from utils.config import config
-
-def setup_logging():
-    """Configurar sistema de logging"""
-    log_dir = Path(config.log_file).parent
-    log_dir.mkdir(parents=True, exist_ok=True)
-    
-    logging.basicConfig(
-        level=getattr(logging, config.log_level),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(config.log_file),
-            logging.StreamHandler()
-        ]
-    )
+            # Configurar aplicación
+            self.app.setApplicationName("Almacena")
+            self.app.setApplicationDisplayName("Almacena - Sistema de Gestión")
+            self.app.setApplicationVersion("1.0.0")
+            
+            print("[Main] Iniciando aplicación...")
+            
+            # Crear y mostrar ventana principal
+            self.window = MainWindow()
+            
+            print("[Main] Ventana principal creada")
+            
+            # Iniciar un timer para imprimir el estado
+            debug_timer = QTimer()
+            debug_timer.setInterval(1000)  # cada segundo
+            debug_timer.timeout.connect(self.debug_print)
+            debug_timer.start()
+            
+            print("[Main] Iniciando bucle de eventos...")
+            # Ejecutar aplicación
+            return self.app.exec()
+            
+        except Exception as e:
+            print(f"[Main] Error iniciando aplicación: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
+            
+    def debug_print(self):
+        """Imprimir información de debug"""
+        if self.window:
+            print(f"[Debug] Ventana visible: {self.window.isVisible()}")
+            print(f"[Debug] Ventana activa: {self.window.isActiveWindow()}")
 
 def main():
-    """Función principal de la aplicación"""
-    # Configurar logging
-    setup_logging()
-    logger = logging.getLogger(__name__)
-    
-    # Crear aplicación Qt
-    app = QApplication(sys.argv)
-    app.setApplicationName("Almacena")
-    app.setApplicationVersion("0.1.0")
-    app.setOrganizationName("Freddy Molina")
-    
-    logger.info("Iniciando Almacena v0.1.0")
-    
-    try:
-        # Crear y mostrar ventana principal
-        window = MainWindow()
-        window.show()
-        
-        logger.info("Interfaz gráfica inicializada exitosamente")
-        
-        # Ejecutar loop de eventos
-        return app.exec()
-        
-    except Exception as e:
-        logger.error(f"Error crítico al iniciar aplicación: {e}")
-        return 1
+    """Función principal"""
+    app = Application()
+    return app.run()
 
-if __name__ == "__main__":
-    sys.exit(main()) 
+if __name__ == '__main__':
+    sys.exit(main())
