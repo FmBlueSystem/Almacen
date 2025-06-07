@@ -120,6 +120,10 @@ pytest --cov=src
 python scripts/test_recursion_fix.py
 ```
 
+Para entornos sin servidor gráfico (como **Codex**), revisa el documento
+[docs/codex_setup.md](docs/codex_setup.md) para instalar las bibliotecas de
+sistema necesarias y ejecutar `pytest` en modo *offscreen*.
+
 ## 🛡️ Corrección del RecursionError
 
 Este proyecto incluye una corrección comprensiva para el `RecursionError: maximum recursion depth exceeded` que ocurría en el método `load_songs_for_library_view`.
