@@ -1,3 +1,3 @@
-"""
-Módulo Services - Lógica de negocio y servicios
-""" 
+"""Service layer modules."""
+
+from .metadata_extractor import MetadataExtractor
