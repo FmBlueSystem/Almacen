@@ -44,3 +44,33 @@ def setup_test_env():
                 item.unlink()
             elif item.is_dir():
                 item.rmdir()
+
+
+# Implements Dart AI Task: Centralize Qt fixtures
+
+@pytest.fixture(scope="session")
+def qapp():
+    """Provide QApplication instance for Qt tests"""
+    pytest.importorskip("PyQt6")
+    from PyQt6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    yield app
+    app.quit()
+
+
+@pytest.fixture
+def qtbot(qapp):
+    """Simple QtBot replacement used in tests"""
+    from PyQt6.QtTest import QTest
+
+    class QtBot:
+        def addWidget(self, widget):
+            widget.show()
+
+        def wait(self, ms):
+            QTest.qWait(ms)
+
+    return QtBot()

@@ -3,6 +3,10 @@ Tests para prevenir regresión del RecursionError en la aplicación
 """
 
 import pytest
+
+# Implements Dart AI Task: Skip tests if PyQt6 is missing
+pytest.importorskip("PyQt6")
+
 import time
 from unittest.mock import Mock, patch, MagicMock
 from PyQt6.QtWidgets import QApplication
@@ -281,30 +285,5 @@ class TestErrorHandler:
 
 
 # Configuración de pytest
-@pytest.fixture(scope="session")
-def qapp():
-    """Fixture para QApplication"""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    yield app
-    app.quit()
-
-
-@pytest.fixture
-def qtbot(qapp):
-    """Fixture para QTest utilities"""
-    from PyQt6.QtTest import QTest
-    
-    class QtBot:
-        def addWidget(self, widget):
-            pass
-            
-        def wait(self, ms):
-            QTest.qWait(ms)
-    
-    return QtBot()
-
-
 if __name__ == "__main__":
     pytest.main([__file__])

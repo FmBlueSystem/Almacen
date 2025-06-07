@@ -3,6 +3,10 @@ Pruebas para el servicio de gestión de música
 """
 
 import pytest
+
+# Implements Dart AI Task: Skip tests if mutagen is missing
+pytest.importorskip("mutagen")
+
 import shutil
 from pathlib import Path
 import sys
@@ -70,6 +74,7 @@ def test_import_folder(music_service, test_music_dir):
     # import numpy as np -> ya importado a través de pytest.importorskip
     # from scipy.io import wavfile -> scipy.io.wavfile estará disponible si la prueba no se omite
     from scipy.io import wavfile # Mantener para claridad, aunque scipy ya está importado
+    pytest.importorskip("mutagen")
     import mutagen
     from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON
     
@@ -169,6 +174,7 @@ def test_import_files(music_service, test_music_dir):
     numpy = pytest.importorskip("numpy")
 
     from scipy.io import wavfile  # Importado solo si la prueba no se omite
+    pytest.importorskip("mutagen")
     from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON
     import os
 

@@ -5,6 +5,10 @@ Script para probar la configuración con dotenv
 
 import sys
 import logging
+import pytest
+
+# Skip when pytest tries to collect this script
+pytest.skip("Script used for manual testing", allow_module_level=True)
 from pathlib import Path
 
 # Agregar src al path para imports

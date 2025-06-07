@@ -374,8 +374,9 @@ class MainWindow(QMainWindow):
         self.load_songs_for_library_view(page=page)
 
     def load_songs_for_library_view(self, page: int):
-        """Carga canciones en LibraryView para una página específica y los filtros actuales."""
-        # Control de re-entrada: verificar si podemos ejecutar
+        """Carga canciones en LibraryView para una página específica."""
+        # Implements Dart AI Task: Refactor long load method
+
         if not self._loading_circuit_breaker.start_loading():
             self._logger.warning(f"Load request for page {page} blocked by circuit breaker")
             return
@@ -386,37 +387,42 @@ class MainWindow(QMainWindow):
             genre = self.current_search_filters.get('genre', "")
             per_page = self.library_view.items_per_page
 
-            songs = []
-            total_items_for_view = 0
-
-            if title or artist or genre:
-                # Cuando hay filtros, search_songs devuelve (songs_list, total_items_matching_filter)
-                songs, total_items_for_view = self.music_service.search_songs(
-                    title, artist, genre, page, per_page
-                )
-            else:
-                # Cuando NO hay filtros, get_songs devuelve (songs_list, total_pages_overall)
-                # Necesitamos el total de items global para LibraryView
-                songs, _ = self.music_service.get_songs(page, per_page)
-                total_items_for_view = self.music_service.get_total_songs_count()
-            
-            self.library_view.load_songs(songs, total_items_for_view)
-            self.statusBar().showMessage(f"Mostrando página {page}. {len(songs)} canciones (de {total_items_for_view} encontradas).")
-            
-            # Marcar como exitoso
+            songs, total_items = self._fetch_songs(page, title, artist, genre, per_page)
+            self._update_library_view(songs, total_items, page)
             self._loading_circuit_breaker.finish_loading(success=True)
-            
+
         except (DatabaseConnectionError, DatabaseTimeoutError) as e:
-            # Manejo específico de errores de base de datos
             self._loading_circuit_breaker.finish_loading(success=False)
-            error_msg = ErrorHandler.handle_db_error(self._logger, e, f"loading page {page}")
-            self.statusBar().showMessage(error_msg, 5000)
-            
+            self._handle_db_error(e, page)
+
         except Exception as e:
-            # Manejo de errores generales
             self._loading_circuit_breaker.finish_loading(success=False)
-            error_msg = ErrorHandler.handle_loading_error(self._logger, e, page)
-            self.statusBar().showMessage(error_msg, 5000)
+            self._handle_general_error(e, page)
+
+    def _fetch_songs(self, page: int, title: str, artist: str, genre: str, per_page: int):
+        """Obtener canciones aplicando filtros"""
+        if title or artist or genre:
+            return self.music_service.search_songs(title, artist, genre, page, per_page)
+        songs, _ = self.music_service.get_songs(page, per_page)
+        total = self.music_service.get_total_songs_count()
+        return songs, total
+
+    def _update_library_view(self, songs: list, total_items: int, page: int):
+        """Actualizar vista de biblioteca con los datos cargados"""
+        self.library_view.load_songs(songs, total_items)
+        self.statusBar().showMessage(
+            f"Mostrando página {page}. {len(songs)} canciones (de {total_items} encontradas)."
+        )
+
+    def _handle_db_error(self, error: Exception, page: int):
+        """Mostrar mensajes de error de base de datos"""
+        error_msg = ErrorHandler.handle_db_error(self._logger, error, f"loading page {page}")
+        self.statusBar().showMessage(error_msg, 5000)
+
+    def _handle_general_error(self, error: Exception, page: int):
+        """Mostrar mensajes de error genéricos"""
+        error_msg = ErrorHandler.handle_loading_error(self._logger, error, page)
+        self.statusBar().showMessage(error_msg, 5000)
 
     def on_song_selection_changed(self, selected_songs: list[dict], selected_index: int):
         """

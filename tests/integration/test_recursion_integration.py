@@ -3,6 +3,10 @@ Tests de integración para el escenario completo de prevención de recursión
 """
 
 import pytest
+
+# Implements Dart AI Task: Skip tests if PyQt6 is missing
+pytest.importorskip("PyQt6")
+
 import time
 import sqlite3
 from unittest.mock import patch, Mock
@@ -224,30 +228,5 @@ class TestRecursionIntegration:
 
 
 # Configuración de pytest
-@pytest.fixture(scope="session")
-def qapp():
-    """Fixture para QApplication"""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    yield app
-    app.quit()
-
-
-@pytest.fixture
-def qtbot(qapp):
-    """Fixture para QTest utilities"""
-    from PyQt6.QtTest import QTest
-    
-    class QtBot:
-        def addWidget(self, widget):
-            widget.show()
-            
-        def wait(self, ms):
-            QTest.qWait(ms)
-    
-    return QtBot()
-
-
 if __name__ == "__main__":
     pytest.main([__file__])
