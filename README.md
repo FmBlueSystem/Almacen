@@ -122,7 +122,7 @@ python scripts/test_recursion_fix.py
 
 ## 🛡️ Corrección del RecursionError
 
-Este proyecto incluye una corrección comprehensiva para el `RecursionError: maximum recursion depth exceeded` que ocurría en el método `load_songs_for_library_view`.
+Este proyecto incluye una corrección comprensiva para el `RecursionError: maximum recursion depth exceeded` que ocurría en el método `load_songs_for_library_view`.
 
 ### Problema Original
 - **Causa:** `QMessageBox.critical()` modal interfería con el bucle de eventos de Qt
