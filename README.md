@@ -87,6 +87,7 @@ Para contribuir al desarrollo:
 1. Instalar dependencias de desarrollo:
 ```bash
 pip install -r requirements-dev.txt
+pip install PyQt6 mutagen python-dotenv
 ```
 
 2. Activar pre-commit:

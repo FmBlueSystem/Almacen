@@ -6,6 +6,10 @@ Script de demostración para mostrar que el RecursionError ha sido corregido
 import sys
 import time
 from pathlib import Path
+import pytest
+
+# Skip execution during pytest collection
+pytest.skip("Manual recursion demo", allow_module_level=True)
 
 # Agregar el directorio src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))

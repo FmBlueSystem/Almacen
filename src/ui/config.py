@@ -2,25 +2,24 @@
 Configuración de la interfaz de usuario
 """
 
-import os
 from pathlib import Path
 from typing import Tuple
-from dotenv import load_dotenv
+
+from src.utils.config import config
 
 class UIConfig:
-    """Configuración de la interfaz desde variables de entorno"""
-    
-    # Cargar .env
-    load_dotenv()
-    
+    """Configuración de la interfaz tomada del módulo central Config"""
+
+    # Implements Dart AI Task: Refactor UIConfig to use Config
+
     # Tema
-    THEME = os.getenv('THEME', 'light')
-    
-    # Resolución base
-    BASE_RESOLUTION = os.getenv('BASE_RESOLUTION', '1920x1080')
-    
+    THEME = config.theme
+
+    # Resolución base como cadena WIDTHxHEIGHT
+    BASE_RESOLUTION = config.get('BASE_RESOLUTION', f"{config.window_width}x{config.window_height}")
+
     # Familia de fuente
-    FONT_FAMILY = os.getenv('FONT_FAMILY', 'Roboto')
+    FONT_FAMILY = config.get('FONT_FAMILY', 'Roboto')
     
     # Rutas
     FONT_PATH = Path('assets/fonts/Roboto-Regular.ttf')
@@ -75,3 +74,8 @@ class UIConfig:
     def is_dark_theme(cls) -> bool:
         """Verificar si está activo el tema oscuro"""
         return cls.THEME.lower() == 'dark'
+
+    @classmethod
+    def set_dark_theme(cls, dark: bool):
+        """Actualizar el tema en memoria"""
+        cls.THEME = 'dark' if dark else 'light'
