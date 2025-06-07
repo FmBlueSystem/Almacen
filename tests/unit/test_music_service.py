@@ -65,7 +65,8 @@ def test_import_folder(music_service, test_music_dir):
         shutil.rmtree(test_music_dir)
     test_music_dir.mkdir(parents=True)
     
-    # Crear un archivo MP3 de prueba usando generate_test_data
+    # Generar archivos de audio directamente con SciPy y convertirlos a MP3
+    # mediante ffmpeg
     # import numpy as np -> ya importado a través de pytest.importorskip
     # from scipy.io import wavfile -> scipy.io.wavfile estará disponible si la prueba no se omite
     from scipy.io import wavfile # Mantener para claridad, aunque scipy ya está importado
