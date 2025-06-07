@@ -4,6 +4,7 @@ Servicio base para lógica de negocio
 
 import logging
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from database.connection import DatabaseConnection
 
@@ -134,7 +135,7 @@ class BaseService(ABC):
                 return False
             
             # Agregar timestamp de actualización
-            filtered_data['updated_at'] = 'CURRENT_TIMESTAMP'
+            filtered_data['updated_at'] = datetime.utcnow().isoformat()
             
             # Construir query de actualización
             set_clause = ', '.join([f"{field} = ?" for field in filtered_data.keys()])
