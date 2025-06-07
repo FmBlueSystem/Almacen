@@ -159,3 +159,57 @@ def test_pagination(music_service, test_music_dir):
     assert len(songs) == 20  # Segunda página completa
     assert total_pages == 3  # 55 canciones / 20 por página = 3 páginas
     assert songs[0].title == "Song 020"  # Primera canción de la segunda página
+
+
+def test_import_files(music_service, test_music_dir):
+    """Probar importación de archivos individuales"""
+    # Omitir esta prueba si scipy o numpy no están instalados
+    scipy = pytest.importorskip("scipy")
+    numpy = pytest.importorskip("numpy")
+
+    from scipy.io import wavfile  # Importado solo si la prueba no se omite
+    from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON
+    import os
+
+    # Limpiar y recrear directorio de prueba
+    if test_music_dir.exists():
+        shutil.rmtree(test_music_dir)
+    test_music_dir.mkdir(parents=True)
+
+    mp3_paths = []
+    for i in range(2):
+        wav_path = test_music_dir / f"temp{i}.wav"
+        mp3_path = test_music_dir / f"temp{i}.mp3"
+
+        sample_rate = 44100
+        duration = 1.0
+        t = numpy.linspace(0, duration, int(sample_rate * duration))
+        data = numpy.sin(2 * numpy.pi * 440 * t)
+        data = numpy.int16(data * 32767)
+        wavfile.write(wav_path, sample_rate, data)
+
+        os.system(
+            f'ffmpeg -i "{wav_path}" -codec:a libmp3lame -qscale:a 2 "{mp3_path}" -y -hide_banner -loglevel panic'
+        )
+        wav_path.unlink()
+
+        audio = ID3()
+        audio.save(mp3_path)
+        audio = ID3(mp3_path)
+        audio.add(TIT2(encoding=3, text=f"Test Song {i}"))
+        audio.add(TPE1(encoding=3, text="Test Artist"))
+        audio.add(TALB(encoding=3, text="Test Album"))
+        audio.add(TCON(encoding=3, text="Test Genre"))
+        audio.save()
+
+        mp3_paths.append(str(mp3_path))
+
+    # Agregar un archivo inexistente a la lista
+    nonexistent = str(test_music_dir / "does_not_exist.mp3")
+    file_list = mp3_paths + [nonexistent]
+
+    imported, failed = music_service.import_files(file_list)
+
+    assert imported == 2
+    assert failed == 1
+    assert music_service.get_total_songs_count() == 2
