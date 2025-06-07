@@ -4,9 +4,9 @@ Vista de biblioteca con Material Design 3
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QFrame, QLabel, QComboBox, QLineEdit
+    QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QApplication
 )
-from PyQt6.QtCore import pyqtSignal, QSize, Qt
+from PyQt6.QtCore import pyqtSignal, QSize, Qt, QTimer
 
 from src.views.base_view import BaseView
 from ..song_table import SongTable
@@ -19,21 +19,33 @@ class LibraryView(QWidget, BaseView):
     view_changed = pyqtSignal(str)
     song_selection_changed = pyqtSignal(list, int)  # Lista de canciones y índice seleccionado
     song_double_clicked = pyqtSignal(dict)  # Reenvía la señal de la tabla
+    page_changed_requested = pyqtSignal(int) # Nueva señal para solicitar cambio de página
     
-    def __init__(self, audio_service, parent=None): 
+    def __init__(self, audio_service, parent=None):
         QWidget.__init__(self, parent)
-        self.audio_service = audio_service 
+        self.audio_service = audio_service
+        self.current_page = 1
+        self.total_pages = 1
+        self.items_per_page = 50 # Podría venir de config o SongTable
+        
+        # Debouncing para búsquedas
+        self._search_timer = QTimer()
+        self._search_timer.setSingleShot(True)
+        self._search_timer.timeout.connect(self._emit_search_changed)
+        self._search_debounce_delay = 300  # 300ms de delay
+        
         self.init_ui()
         
     def init_ui(self):
         """Inicializar interfaz"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(24)
+        layout.setSpacing(16) # Reducido un poco para más espacio para paginación
         
         self.create_header(layout)
         self.create_filters(layout)
         self.create_table(layout)
+        self.create_pagination_controls(layout) # Añadir controles de paginación
         
         self.connect_audio_signals() 
         
@@ -153,7 +165,61 @@ class LibraryView(QWidget, BaseView):
     def create_table(self, layout):
         """Crear tabla de canciones"""
         self.table = SongTable()
+        self.items_per_page = self.table.items_per_page # Sincronizar items_per_page
         layout.addWidget(self.table)
+        
+    def create_pagination_controls(self, main_layout: QVBoxLayout):
+        """Crear controles de paginación (Anterior, Siguiente, Indicador de página)"""
+        pagination_container = QWidget()
+        layout = QHBoxLayout(pagination_container)
+        layout.setContentsMargins(0, 8, 0, 0) # Margen superior
+        layout.setSpacing(16)
+
+        self.prev_button = QPushButton("Anterior")
+        self.prev_button.setObjectName("paginationButton")
+        self.prev_button.setEnabled(False)
+        self.prev_button.clicked.connect(self.go_to_previous_page)
+        # Añadir icono
+        icon_prev = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_ArrowBack)
+        self.prev_button.setIcon(icon_prev)
+        layout.addWidget(self.prev_button)
+
+        self.page_label = QLabel(f"Página {self.current_page} de {self.total_pages}")
+        self.page_label.setObjectName("paginationLabel")
+        self.page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.page_label)
+
+        self.next_button = QPushButton("Siguiente")
+        self.next_button.setObjectName("paginationButton")
+        self.next_button.setEnabled(False)
+        self.next_button.clicked.connect(self.go_to_next_page)
+        # Añadir icono
+        icon_next = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_ArrowForward)
+        self.next_button.setIcon(icon_next)
+        layout.addWidget(self.next_button)
+        
+        layout.addStretch() # Empujar controles a la izquierda si se desea, o centrar.
+                            # Para centrar, añadir stretch a ambos lados.
+        
+        main_layout.addWidget(pagination_container)
+
+    def go_to_previous_page(self):
+        """Navegar a la página anterior."""
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.page_changed_requested.emit(self.current_page)
+
+    def go_to_next_page(self):
+        """Navegar a la página siguiente."""
+        if self.current_page < self.total_pages:
+            self.current_page += 1
+            self.page_changed_requested.emit(self.current_page)
+
+    def update_pagination_controls(self):
+        """Actualizar el estado de los botones y la etiqueta de paginación."""
+        self.page_label.setText(f"Página {self.current_page} de {self.total_pages}")
+        self.prev_button.setEnabled(self.current_page > 1)
+        self.next_button.setEnabled(self.current_page < self.total_pages)
         
     def update_filters(self, stats: dict):
         """
@@ -174,7 +240,15 @@ class LibraryView(QWidget, BaseView):
         self.genre_combo.addItems(sorted(stats['genres']))
         
     def on_search_changed(self):
-        """Emitir señal de búsqueda con filtros actuales"""
+        """Activar debouncing para emitir señal de búsqueda."""
+        # Detener el timer anterior si estaba corriendo
+        self._search_timer.stop()
+        # Iniciar nuevo timer con delay
+        self._search_timer.start(self._search_debounce_delay)
+    
+    def _emit_search_changed(self):
+        """Emitir señal de búsqueda con filtros actuales y resetear a página 1."""
+        self.current_page = 1 # Resetear a la primera página en nueva búsqueda
         title = self.search_field.text()
         
         artist = self.artist_combo.currentText()
@@ -188,8 +262,21 @@ class LibraryView(QWidget, BaseView):
         self.search_changed.emit(title, artist, genre)
         
     def load_songs(self, songs: list, total_items: int = None):
-        """Cargar canciones en la tabla"""
-        self.table.load_songs(songs, total_items)
+        """Cargar canciones en la tabla y actualizar paginación."""
+        self.table.load_songs(songs) # Pasar solo la lista de canciones
+        
+        if total_items is not None:
+            if total_items == 0:
+                self.total_pages = 1 # Evitar división por cero si no hay items
+                self.current_page = 1
+            else:
+                self.total_pages = (total_items + self.items_per_page - 1) // self.items_per_page
+        else:
+            # Si no se provee total_items, asumimos una sola página con las canciones dadas
+            self.total_pages = 1
+            self.current_page = 1
+            
+        self.update_pagination_controls()
         
     def clear(self):
         """Limpiar vista"""
@@ -212,7 +299,11 @@ class LibraryView(QWidget, BaseView):
         
     def refresh(self):
         """Actualizar vista"""
-        self.table.viewport().update()
+        if hasattr(self.table, 'table') and self.table.table is not None:
+            self.table.table.viewport().update()
+        else:
+            print("[LibraryView] Advertencia: self.table.table no disponible para refresh.")
+            self.table.update()
         
     def cleanup(self):
         """Limpiar recursos"""

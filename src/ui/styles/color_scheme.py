@@ -5,23 +5,23 @@ Sistema de colores Material Design 3
 class MD3LightColors:
     """Paleta de colores Material Design 3 - Tema Claro"""
     # Colores primarios
-    PRIMARY = "#6750a4"
+    PRIMARY = "#6200EE"
     ON_PRIMARY = "#ffffff"
-    PRIMARY_CONTAINER = "#eaddff"
-    ON_PRIMARY_CONTAINER = "#21005d"
+    PRIMARY_CONTAINER = "#E8DEF8"
+    ON_PRIMARY_CONTAINER = "#21005E"
     
     # Colores secundarios
-    SECONDARY = "#625b71"
-    ON_SECONDARY = "#ffffff"
-    SECONDARY_CONTAINER = "#e8def8"
-    ON_SECONDARY_CONTAINER = "#1d192b"
+    SECONDARY = "#03DAC6"
+    ON_SECONDARY = "#000000"
+    SECONDARY_CONTAINER = "#CEFAF3"
+    ON_SECONDARY_CONTAINER = "#00504D"
     
     # Colores de superficie
-    SURFACE = "#fffbfe"
-    ON_SURFACE = "#1c1b1f"
-    SURFACE_VARIANT = "#e7e0ec"
-    ON_SURFACE_VARIANT = "#49454f"
-    SURFACE_TINT = "#6750a4"
+    SURFACE = "#FAFAFA"
+    ON_SURFACE = "#1C1B1F"
+    SURFACE_VARIANT = "#E7E0EC"
+    ON_SURFACE_VARIANT = "#49454F"
+    SURFACE_TINT = "#6200EE"
     
     # Colores de utilidad
     OUTLINE = "#79747e"
@@ -32,10 +32,28 @@ class MD3LightColors:
     INVERSE_ON_SURFACE = "#f4eff4"
     
     # Colores de estado
-    ERROR = "#b3261e"
-    ON_ERROR = "#ffffff"
-    ERROR_CONTAINER = "#f9dedc"
-    ON_ERROR_CONTAINER = "#410e0b"
+    ERROR = "#B00020"
+    ON_ERROR = "#FFFFFF"
+    ERROR_CONTAINER = "#FFDAD9"
+    ON_ERROR_CONTAINER = "#410002"
+    
+    # Colores de éxito
+    SUCCESS = "#00C853"
+    ON_SUCCESS = "#FFFFFF"
+    SUCCESS_CONTAINER = "#D7F8D7"
+    ON_SUCCESS_CONTAINER = "#005C26"
+    
+    # Colores informativos
+    INFO = "#2196F3"
+    ON_INFO = "#FFFFFF"
+    INFO_CONTAINER = "#E3F2FD"
+    ON_INFO_CONTAINER = "#0D47A1"
+    
+    # Colores de advertencia
+    WARNING = "#FFB300"
+    ON_WARNING = "#000000"
+    WARNING_CONTAINER = "#FFF3E0"
+    ON_WARNING_CONTAINER = "#7A5700"
 
 class MD3DarkColors:
     """Paleta de colores Material Design 3 - Tema Oscuro"""

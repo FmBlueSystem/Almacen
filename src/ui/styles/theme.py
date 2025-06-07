@@ -19,6 +19,26 @@ class MD3Theme:
         return cls._is_dark
     
     @staticmethod
+    def _get_ripple_animation() -> str:
+        """Obtener animación de ripple effect"""
+        return """
+        /* Ripple effect */
+        @keyframes ripple {
+            0% { 
+                background-color: rgba(0, 0, 0, 0);
+                transform: scale(0); 
+            }
+            50% { 
+                transform: scale(1.5); 
+            }
+            100% { 
+                background-color: rgba(0, 0, 0, 0.1);
+                transform: scale(2); 
+            }
+        }
+        """
+    
+    @staticmethod
     def get_stylesheet(colors: dict = None, is_dark: bool = None) -> str:
         """
         Obtener hoja de estilos QSS con colores Material Design 3
@@ -34,12 +54,28 @@ class MD3Theme:
             
         return f"""
             /* Reset global styles */
+            @font-face {{
+                font-family: "Roboto Flex";
+                src: url("assets/fonts/RobotoFlex-Regular.ttf");
+            }}
+            
             * {{
                 color: {colors["on-surface"]};
                 background-color: {colors["surface"]};
                 selection-background-color: {colors["primary-container"]};
                 selection-color: {colors["on-primary-container"]};
-                font-family: Arial;
+                font-family: "Roboto Flex", Arial;
+            }}
+            
+            /* Animaciones */
+            {MD3Theme._get_ripple_animation()}
+            
+            /* Transiciones globales */
+            * {{
+                transition: background-color 0.2s ease,
+                            color 0.2s ease,
+                            border-color 0.2s ease,
+                            box-shadow 0.2s ease;
             }}
 
             /* Estilos globales MD3 */
@@ -52,8 +88,13 @@ class MD3Theme:
             QFrame#navigationRail {{
                 background-color: {colors["surface-variant"]};
                 border-right: 1px solid {colors["outline"]};
-                min-width: 280px;
-                max-width: 280px;
+                min-width: 72px;
+                max-width: 72px;
+            }}
+            
+            QFrame#navigationRail[expanded="true"] {{
+                min-width: 256px;
+                max-width: 256px;
             }}
             
             QFrame#appHeader {{
@@ -71,11 +112,31 @@ class MD3Theme:
             QFrame#playbackPanel {{
                 background-color: {colors["surface-variant"]};
                 border-top: 1px solid {colors["outline"]};
-                padding: 12px;
+                padding: 16px 24px;
             }}
 
+            /* Información de canción */
+            QLabel#playingTitle {{
+                color: {colors["on-surface"]};
+                font-size: 16px;
+                font-weight: 600;
+            }}
+
+            QLabel#playingArtist {{
+                color: {colors["on-surface-variant"]};
+                font-size: 14px;
+            }}
+
+            QLabel#timeLabel {{
+                color: {colors["on-surface-variant"]};
+                font-size: 12px;
+                min-width: 45px;
+            }}
+
+            /* Controles de reproducción */
             QPushButton#playbackButton {{
-                background-color: transparent;
+                background-color: {colors["surface"]};
+                color: {colors["on-surface"]};
                 border: 1px solid {colors["outline"]};
                 border-radius: 20px;
                 padding: 8px;
@@ -84,16 +145,35 @@ class MD3Theme:
                 max-width: 40px;
                 min-height: 40px;
                 max-height: 40px;
+                font-size: 16px;
+            }}
+
+            QPushButton#playbackButton:hover {{
+                background-color: {colors["primary-container"]};
+                color: {colors["on-primary-container"]};
+                border-color: {colors["primary"]};
+            }}
+
+            QPushButton#playbackButton:pressed {{
+                background-color: {colors["primary"]};
+                color: {colors["on-primary"]};
             }}
 
             QPushButton#playbackButton:disabled {{
                 color: {colors["outline"]};
                 border-color: {colors["outline-variant"]};
+                background-color: {colors["surface-variant"]};
+            }}
+
+            QPushButton#playbackButton:checked {{
+                background-color: {colors["primary-container"]};
+                color: {colors["on-primary-container"]};
+                border-color: {colors["primary"]};
             }}
 
             QPushButton#playButton {{
-                background-color: {colors["primary-container"]};
-                color: {colors["on-primary-container"]};
+                background-color: {colors["primary"]};
+                color: {colors["on-primary"]};
                 border: none;
                 border-radius: 24px;
                 padding: 12px;
@@ -102,6 +182,17 @@ class MD3Theme:
                 max-width: 48px;
                 min-height: 48px;
                 max-height: 48px;
+                font-size: 20px;
+            }}
+
+            QPushButton#playButton:hover {{
+                background-color: {colors["primary-container"]};
+                color: {colors["on-primary-container"]};
+            }}
+
+            QPushButton#playButton:disabled {{
+                background-color: {colors["surface-variant"]};
+                color: {colors["outline"]};
             }}
 
             /* Barra de progreso */
@@ -115,15 +206,65 @@ class MD3Theme:
                 border-radius: 2px;
             }}
 
-            QSlider#progressSlider::handle:horizontal {{
+            QSlider#progressSlider::sub-page:horizontal {{
                 background: {colors["primary"]};
-                width: 12px;
-                height: 12px;
-                margin: -4px 0;
-                border-radius: 6px;
+                height: 4px;
+                border-radius: 2px;
             }}
 
-            /* Tablas */
+            QSlider#progressSlider::handle:horizontal {{
+                background: {colors["primary"]};
+                border: 2px solid {colors["on-primary"]};
+                width: 16px;
+                height: 16px;
+                margin: -6px 0;
+                border-radius: 8px;
+            }}
+
+            QSlider#progressSlider::handle:horizontal:hover {{
+                background: {colors["primary-container"]};
+                border-color: {colors["primary"]};
+            }}
+
+            /* Control de volumen */
+            QLabel#volumeIcon {{
+                color: {colors["on-surface-variant"]};
+                font-size: 16px;
+                padding: 0 8px;
+            }}
+
+            QSlider#volumeSlider {{
+                height: 24px;
+                max-width: 100px;
+            }}
+
+            QSlider#volumeSlider::groove:horizontal {{
+                background: {colors["surface-variant"]};
+                height: 4px;
+                border-radius: 2px;
+            }}
+
+            QSlider#volumeSlider::sub-page:horizontal {{
+                background: {colors["secondary"]};
+                height: 4px;
+                border-radius: 2px;
+            }}
+
+            QSlider#volumeSlider::handle:horizontal {{
+                background: {colors["secondary"]};
+                border: 2px solid {colors["on-secondary"]};
+                width: 16px;
+                height: 16px;
+                margin: -6px 0;
+                border-radius: 8px;
+            }}
+
+            QSlider#volumeSlider::handle:horizontal:hover {{
+                background: {colors["secondary-container"]};
+                border-color: {colors["secondary"]};
+            }}
+
+            /* Tablas y otros componentes heredados */
             QTreeWidget#navigationTree {{
                 background-color: transparent;
                 border: none;
@@ -146,23 +287,38 @@ class MD3Theme:
                 background-color: {colors["surface-variant"]};
             }}
             
-            /* Botones MD3 */
             QPushButton#primaryButton {{
                 background-color: {colors["primary"]};
                 color: {colors["on-primary"]};
                 border: none;
-                border-radius: 20px;
-                padding: 10px 24px;
+                border-radius: 24px;
+                padding: 12px 24px;
                 font-weight: 500;
                 font-size: 14px;
+                min-height: 48px;
             }}
             
             QPushButton#primaryButton:hover {{
-                background-color: {colors["primary"]}ee;
+                background-color: {colors["primary"]};
+                box-shadow: 0 2px 4px {colors["shadow"]};
+                transform: translateY(-1px);
             }}
             
             QPushButton#primaryButton:pressed {{
-                background-color: {colors["primary"]}cc;
+                background-color: {colors["primary"]};
+                transform: scale(0.98);
+                box-shadow: 0 1px 2px {colors["shadow"]};
+            }}
+            
+            QPushButton#primaryButton:focus {{
+                outline: 2px solid {colors["primary-container"]};
+                outline-offset: 2px;
+            }}
+            
+            QPushButton#primaryButton:disabled {{
+                background-color: {colors["surface-variant"]};
+                color: {colors["outline"]};
+                box-shadow: none;
             }}
             
             QPushButton#secondaryButton {{
@@ -175,22 +331,28 @@ class MD3Theme:
                 font-size: 14px;
             }}
             
-            /* Campos de búsqueda */
             QLineEdit#searchField {{
                 background-color: {colors["surface-variant"]};
                 color: {colors["on-surface-variant"]};
-                border: none;
+                border: 2px solid transparent;
                 border-radius: 24px;
                 padding: 12px 24px;
                 font-size: 16px;
+                min-height: 48px;
+            }}
+            
+            QLineEdit#searchField:hover {{
+                background-color: {colors["surface-variant"]};
+                border-color: {colors["outline-variant"]};
             }}
             
             QLineEdit#searchField:focus {{
-                background-color: {colors["primary-container"]};
-                color: {colors["on-primary-container"]};
+                background-color: {colors["surface"]};
+                border-color: {colors["primary"]};
+                color: {colors["on-surface"]};
+                box-shadow: 0 2px 4px {colors["shadow"]};
             }}
             
-            /* Combo boxes */
             QComboBox#filterCombo {{
                 background-color: {colors["surface"]};
                 border: 1px solid {colors["outline"]};
@@ -203,14 +365,12 @@ class MD3Theme:
                 border-color: {colors["primary"]};
             }}
             
-            /* Contenedores */
             QFrame#contentContainer {{
                 background-color: {colors["surface"]};
                 border-radius: 28px;
                 padding: 24px;
             }}
             
-            /* Headers */
             QLabel#sectionTitle {{
                 color: {colors["on-surface"]};
                 font-weight: 600;
@@ -218,7 +378,6 @@ class MD3Theme:
                 margin-bottom: 16px;
             }}
             
-            /* Tablas */
             QTableWidget#dataTable {{
                 background-color: {colors["surface"]};
                 border: 1px solid {colors["outline"]};
@@ -227,7 +386,7 @@ class MD3Theme:
                 gridline-color: {colors["outline-variant"]};
             }}
 
-            QHeaderView::section {{
+            QTableWidget#dataTable QHeaderView::section {{
                 background-color: {colors["surface-variant"]};
                 color: {colors["on-surface-variant"]};
                 padding: 12px;
@@ -237,18 +396,17 @@ class MD3Theme:
                 font-weight: 500;
             }}
 
-            QHeaderView::section:first {{
+            QTableWidget#dataTable QHeaderView::section:first {{
                 border-top-left-radius: 15px;
             }}
 
-            QHeaderView::section:last {{
+            QTableWidget#dataTable QHeaderView::section:last {{
                 border-top-right-radius: 15px;
                 border-right: none;
             }}
 
-            QHeaderView::section:hover {{
-                background-color: {colors["secondary-container"]};
-                color: {colors["on-secondary-container"]};
+            QTableWidget#dataTable QHeaderView::section:hover {{
+                background-color: {colors["surface"]};
             }}
             
             QTableWidget#dataTable::item {{
@@ -259,67 +417,128 @@ class MD3Theme:
                 background-color: {colors["secondary-container"]};
                 color: {colors["on-secondary-container"]};
             }}
-            
-            /* Sliders */
-            QSlider::groove:horizontal {{
-                background: {colors["surface-variant"]};
-                height: 4px;
-                border-radius: 2px;
-            }}
-            
-            QSlider::handle:horizontal {{
-                background: {colors["primary"]};
-                width: 20px;
-                margin: -8px 0;
-                border-radius: 10px;
-            }}
-            
-            /* Scroll bars */
-            QScrollBar:vertical {{
-                background: {colors["surface-variant"]};
-                width: 10px;
-                margin: 0;
-                border-radius: 5px;
-            }}
-            
-            QScrollBar::handle:vertical {{
-                background: {colors["primary-container"]};
-                min-height: 20px;
-                border-radius: 5px;
-            }}
-            
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{
-                border: none;
-                background: none;
-                height: 0;
-            }}
-            
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical {{
-                background: none;
-                border: none;
-            }}
         """
     
     @staticmethod
     def get_fonts() -> dict:
         """Obtener definiciones de fuentes MD3"""
-        default_font = "Arial"
+        default_font = "Roboto Flex"
+        fallback_font = "Arial"
+        font_family = f"'{default_font}', {fallback_font}"
+        
         return {
-            "display-large": f"{default_font} 57px",
-            "display-medium": f"{default_font} 45px",
-            "display-small": f"{default_font} 36px",
-            "headline-large": f"{default_font} 32px",
-            "headline-medium": f"{default_font} 28px",
-            "headline-small": f"{default_font} 24px",
-            "title-large": f"{default_font} 22px",
-            "title-medium": f"{default_font} 16px",
-            "title-small": f"{default_font} 14px",
-            "body-large": f"{default_font} 16px",
-            "body-medium": f"{default_font} 14px",
-            "body-small": f"{default_font} 12px",
-            "label-large": f"{default_font} 14px",
-            "label-medium": f"{default_font} 12px",
-            "label-small": f"{default_font} 11px"
+            # Display
+            "display-large": {
+                "font": f"{font_family}",
+                "size": "57px",
+                "line-height": "64px",
+                "weight": "400",
+                "tracking": "-0.25px"
+            },
+            "display-medium": {
+                "font": f"{font_family}",
+                "size": "45px",
+                "line-height": "52px",
+                "weight": "400",
+                "tracking": "0px"
+            },
+            "display-small": {
+                "font": f"{font_family}",
+                "size": "36px",
+                "line-height": "44px",
+                "weight": "400",
+                "tracking": "0px"
+            },
+            
+            # Headline
+            "headline-large": {
+                "font": f"{font_family}",
+                "size": "32px",
+                "line-height": "40px",
+                "weight": "400",
+                "tracking": "0px"
+            },
+            "headline-medium": {
+                "font": f"{font_family}",
+                "size": "28px",
+                "line-height": "36px",
+                "weight": "400",
+                "tracking": "0px"
+            },
+            "headline-small": {
+                "font": f"{font_family}",
+                "size": "24px",
+                "line-height": "32px",
+                "weight": "400",
+                "tracking": "0px"
+            },
+            
+            # Title
+            "title-large": {
+                "font": f"{font_family}",
+                "size": "22px",
+                "line-height": "28px",
+                "weight": "500",
+                "tracking": "0px"
+            },
+            "title-medium": {
+                "font": f"{font_family}",
+                "size": "16px",
+                "line-height": "24px",
+                "weight": "500",
+                "tracking": "0.15px"
+            },
+            "title-small": {
+                "font": f"{font_family}",
+                "size": "14px",
+                "line-height": "20px",
+                "weight": "500",
+                "tracking": "0.1px"
+            },
+            
+            # Body
+            "body-large": {
+                "font": f"{font_family}",
+                "size": "16px",
+                "line-height": "24px",
+                "weight": "400",
+                "tracking": "0.15px"
+            },
+            "body-medium": {
+                "font": f"{font_family}",
+                "size": "14px",
+                "line-height": "20px",
+                "weight": "400",
+                "tracking": "0.25px"
+            },
+            "body-small": {
+                "font": f"{font_family}",
+                "size": "12px",
+                "line-height": "16px",
+                "weight": "400",
+                "tracking": "0.4px"
+            },
+            
+            # Label
+            "label-large": {
+                "font": f"{font_family}",
+                "size": "14px",
+                "line-height": "20px",
+                "weight": "500",
+                "tracking": "0.1px"
+            },
+            "label-medium": {
+                "font": f"{font_family}",
+                "size": "12px",
+                "line-height": "16px",
+                "weight": "500",
+                "tracking": "0.5px"
+            },
+            "label-small": {
+                "font": f"{font_family}",
+                "size": "11px",
+                "line-height": "16px",
+                "weight": "500",
+                "tracking": "0.5px"
+            }
         }

@@ -4,7 +4,7 @@ Modelo para la gestión de canciones
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Tuple
 
 @dataclass
 class Song:
@@ -42,30 +42,6 @@ class SongRepository:
         """
         self.db = db_connection
         
-    def create_table(self):
-        """Crear tabla de canciones si no existe"""
-        query = """
-        CREATE TABLE IF NOT EXISTS songs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            artist TEXT NOT NULL,
-            album TEXT NOT NULL,
-            genre TEXT NOT NULL,
-            bpm INTEGER,
-            file_path TEXT UNIQUE NOT NULL
-        )
-        """
-        self.db.execute_insert_update_delete(query)
-        
-        # Crear índices para búsqueda eficiente
-        indexes = [
-            "CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title)",
-            "CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist)",
-            "CREATE INDEX IF NOT EXISTS idx_songs_genre ON songs(genre)"
-        ]
-        for index in indexes:
-            self.db.execute_insert_update_delete(index)
-    
     def get_all(self, page: int = 1, per_page: int = 50) -> list[Song]:
         """
         Obtener canciones paginadas
@@ -102,7 +78,7 @@ class SongRepository:
         return (total + per_page - 1) // per_page
     
     def search(self, title: str = "", artist: str = "", genre: str = "", 
-              page: int = 1, per_page: int = 50) -> list[Song]:
+              page: int = 1, per_page: int = 50) -> Tuple[List[Song], int]:
         """
         Buscar canciones con filtros
         
@@ -114,34 +90,43 @@ class SongRepository:
             per_page: Canciones por página
             
         Returns:
-            list[Song]: Canciones que coinciden con los filtros
+            Tuple[List[Song], int]: Lista de canciones que coinciden y el número total de canciones que coinciden con el filtro.
         """
         conditions = []
-        params = []
+        where_params = []
         
         if title:
-            conditions.append("title LIKE ?")
-            params.append(f"%{title}%")
+            conditions.append("LOWER(title) LIKE LOWER(?)")
+            where_params.append(f"%{title}%")
         if artist:
-            conditions.append("artist LIKE ?")
-            params.append(f"%{artist}%")
+            conditions.append("LOWER(artist) LIKE LOWER(?)")
+            where_params.append(f"%{artist}%")
         if genre:
-            conditions.append("genre LIKE ?")
-            params.append(f"%{genre}%")
+            conditions.append("LOWER(genre) LIKE LOWER(?)")
+            where_params.append(f"%{genre}%")
             
-        where_clause = " AND ".join(conditions) if conditions else "1"
-        offset = (page - 1) * per_page
+        where_clause_str = "1=1"
+        if conditions:
+            where_clause_str = " AND ".join(conditions)
         
-        query = f"""
+        count_query = f"SELECT COUNT(*) as total FROM songs WHERE {where_clause_str}"
+        count_result = self.db.execute_query(count_query, tuple(where_params))
+        total_items_matching_filter = count_result[0]['total'] if count_result and count_result[0] else 0
+        
+        offset = (page - 1) * per_page
+        select_params = list(where_params)
+        select_params.extend([per_page, offset])
+        
+        select_query = f"""
         SELECT * FROM songs
-        WHERE {where_clause}
+        WHERE {where_clause_str}
         ORDER BY title COLLATE NOCASE
         LIMIT ? OFFSET ?
         """
-        params.extend([per_page, offset])
         
-        rows = self.db.execute_query(query, tuple(params))
-        return [Song.from_db_row(row) for row in rows]
+        rows = self.db.execute_query(select_query, tuple(select_params))
+        songs = [Song.from_db_row(row) for row in rows]
+        return songs, total_items_matching_filter
     
     def add(self, song: Song) -> int:
         """
@@ -184,3 +169,21 @@ class SongRepository:
         query = "SELECT COUNT(*) as count FROM songs WHERE file_path = ?"
         result = self.db.execute_query(query, (str(file_path),))[0]
         return result["count"] > 0
+
+    def get_distinct_artists(self) -> List[str]:
+        """Obtener lista de artistas distintos"""
+        query = "SELECT DISTINCT artist FROM songs WHERE artist IS NOT NULL AND artist != '' ORDER BY artist COLLATE NOCASE"
+        rows = self.db.execute_query(query)
+        return [row['artist'] for row in rows]
+
+    def get_distinct_genres(self) -> List[str]:
+        """Obtener lista de géneros distintos"""
+        query = "SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL AND genre != '' ORDER BY genre COLLATE NOCASE"
+        rows = self.db.execute_query(query)
+        return [row['genre'] for row in rows]
+
+    def get_total_songs_count(self) -> int:
+        """Obtener el número total de canciones en la base de datos."""
+        query = "SELECT COUNT(*) as total FROM songs"
+        result = self.db.execute_query(query)
+        return result[0]['total'] if result and result[0] else 0

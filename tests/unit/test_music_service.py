@@ -12,6 +12,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.services.music_service import MusicService
 from src.database.connection import DatabaseConnection
 from src.models.song import Song
+from src.database.migrations import MigrationManager
 
 # Configuración de pruebas
 @pytest.fixture
@@ -21,6 +22,11 @@ def test_db():
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
     db = DatabaseConnection(str(db_path))
+    
+    # Ejecutar migraciones en la base de datos de prueba
+    migration_mgr = MigrationManager(db)
+    migration_mgr.run_migrations()
+    
     yield db
     
     # Limpiar después de las pruebas
@@ -50,14 +56,19 @@ def music_service(test_db):
 
 def test_import_folder(music_service, test_music_dir):
     """Probar importación de carpeta"""
+    # Omitir esta prueba si scipy o numpy no están instalados
+    scipy = pytest.importorskip("scipy")
+    numpy = pytest.importorskip("numpy") # numpy también es usado aquí
+    
     # Limpiar directorio de prueba
     if test_music_dir.exists():
         shutil.rmtree(test_music_dir)
     test_music_dir.mkdir(parents=True)
     
     # Crear un archivo MP3 de prueba usando generate_test_data
-    import numpy as np
-    from scipy.io import wavfile
+    # import numpy as np -> ya importado a través de pytest.importorskip
+    # from scipy.io import wavfile -> scipy.io.wavfile estará disponible si la prueba no se omite
+    from scipy.io import wavfile # Mantener para claridad, aunque scipy ya está importado
     import mutagen
     from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON
     
@@ -65,9 +76,9 @@ def test_import_folder(music_service, test_music_dir):
     wav_path = test_music_dir / "test.wav"
     sample_rate = 44100
     duration = 1.0  # 1 segundo
-    t = np.linspace(0, duration, int(sample_rate * duration))
-    data = np.sin(2 * np.pi * 440 * t)  # Tono A-440Hz
-    data = np.int16(data * 32767)
+    t = numpy.linspace(0, duration, int(sample_rate * duration))
+    data = numpy.sin(2 * numpy.pi * 440 * t)  # Tono A-440Hz
+    data = numpy.int16(data * 32767)
     wavfile.write(wav_path, sample_rate, data)
     
     # Convertir a MP3
@@ -108,7 +119,7 @@ def test_search_songs(music_service):
     music_service.songs.add(song)
     
     # Ejecutar
-    songs, total_pages = music_service.search_songs(
+    songs, total_items_found = music_service.search_songs(
         title="Test",
         artist="Artist",
         page=1,
@@ -119,7 +130,7 @@ def test_search_songs(music_service):
     assert len(songs) == 1
     assert songs[0].title == "Test Song"
     assert songs[0].artist == "Test Artist"
-    assert total_pages == 1
+    assert total_items_found == 1
 
 def test_pagination(music_service, test_music_dir):
     """Probar paginación de resultados"""

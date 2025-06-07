@@ -2,14 +2,15 @@
 Ventana principal con Material Design 3
 """
 
-import traceback
+import logging
+import time
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QStackedWidget, QMenuBar,
     QMenu, QStatusBar, QApplication, QMessageBox, QFileDialog
 )
 from PyQt6.QtCore import Qt, QSize, QEvent
-from PyQt6.QtGui import QAction, QFontDatabase, QResizeEvent
+from PyQt6.QtGui import QAction, QFontDatabase, QResizeEvent, QIcon
 
 from ..styles.theme import MD3Theme
 from ..styles.color_scheme import get_theme_colors
@@ -21,25 +22,32 @@ from ..components.content_views.playlist_view import PlaylistView
 from ..components.content_views.settings_view import SettingsView
 from src.services.music_service import MusicService
 from src.services.audio_service import AudioService
-from src.database.connection import DatabaseConnection
+from src.database.connection import DatabaseConnection, DatabaseConnectionError, DatabaseTimeoutError
 from src.views.base_view import BaseView
+from src.utils.error_handler import LoadingCircuitBreaker, ErrorHandler
 
 
 
 class MainWindow(QMainWindow):
     """Ventana principal de la aplicación"""
     
-    def __init__(self, parent=None):
+    def __init__(self, db_connection: DatabaseConnection, parent=None):
         super().__init__(parent)
         
         # Servicios
-        self.db = DatabaseConnection()
+        self.db = db_connection # Usar la conexión inyectada
         self.music_service = MusicService(self.db)
         self.audio_service = AudioService(self)
         
         # Estado
         self.current_scale = 1.0
         self._force_exit = False  # Flag para control de salida
+        self._is_initial_loading = False # Flag para la carga inicial
+        self.current_search_filters = {'title': '', 'artist': '', 'genre': ''} # Inicializar filtros
+        
+        # Control de recursión y manejo de errores
+        self._loading_circuit_breaker = LoadingCircuitBreaker(cooldown=2.0)
+        self._logger = ErrorHandler.setup_logging(__name__)
         
         print("[MainWindow] Iniciando configuración...")
         self.init_ui()
@@ -50,8 +58,10 @@ class MainWindow(QMainWindow):
         self.show()
         
         print("[MainWindow] Configuración completada.")
-        # No cargar datos inicialmente para evitar problemas de reproducción automática
-        # Los datos se cargarán cuando el usuario interactúe con la interfaz
+        # Cargar datos de la biblioteca para poblar NavigationRail y mostrar vista inicial
+        self._is_initial_loading = True
+        self.load_library_data()
+        self._is_initial_loading = False
         
     def init_ui(self):
         """Inicializar interfaz"""
@@ -103,6 +113,7 @@ class MainWindow(QMainWindow):
         self.library_view.search_changed.connect(self.on_search_changed)
         self.library_view.song_selection_changed.connect(self.on_song_selection_changed)
         self.library_view.song_double_clicked.connect(self.on_song_double_clicked)
+        self.library_view.page_changed_requested.connect(self.on_library_page_changed)
         self.content_stack.addWidget(self.library_view)
         
         self.playlist_view = PlaylistView()
@@ -118,6 +129,11 @@ class MainWindow(QMainWindow):
         self.connect_playback_panel_signals()
         content_layout.addWidget(self.playback_panel)
         
+        # Ajustar el estiramiento del layout para que el panel de reproducción tenga un tamaño fijo
+        # y el contenido se estire.
+        content_layout.setStretch(0, 1)  # content_stack se estira
+        content_layout.setStretch(1, 0)  # playback_panel no se estira (tamaño fijo)
+        
         layout.addWidget(content_area)
         
         # Splitter para redimensionamiento
@@ -130,6 +146,7 @@ class MainWindow(QMainWindow):
     def connect_playback_panel_signals(self):
         """Conectar señales entre AudioService y PlaybackPanel."""
         if not self.audio_service or not self.playback_panel:
+            print("[MainWindow] Error: AudioService o PlaybackPanel no inicializados para conectar señales.")
             return
 
         # Conectar acciones de PlaybackPanel a AudioService
@@ -218,100 +235,189 @@ class MainWindow(QMainWindow):
         
         # Cargar fuente
         font_path = UIConfig.FONT_PATH
+        font_family_to_set = UIConfig.FONT_FAMILY # Fuente por defecto
+        
         if font_path.exists():
             font_id = QFontDatabase.addApplicationFont(str(font_path))
             if font_id != -1:
-                font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+                # La fuente se cargó correctamente
+                loaded_font_families = QFontDatabase.applicationFontFamilies(font_id)
+                if loaded_font_families:
+                    font_family_to_set = loaded_font_families[0]
+                    print(f"[MainWindow] Fuente '{font_family_to_set}' cargada desde: {font_path}")
+                else:
+                    print(f"[MainWindow] Error: QFontDatabase.applicationFontFamilies devolvió una lista vacía para font_id {font_id} desde {font_path}")
             else:
-                font_family = UIConfig.FONT_FAMILY
+                # Error al cargar la fuente
+                print(f"[MainWindow] Error: No se pudo cargar la fuente desde: {font_path}. Se usará la fuente por defecto '{UIConfig.FONT_FAMILY}'.")
         else:
-            font_family = UIConfig.FONT_FAMILY
+            print(f"[MainWindow] Archivo de fuente no encontrado en: {font_path}. Se usará la fuente por defecto '{UIConfig.FONT_FAMILY}'.")
             
         # Aplicar fuente a la aplicación
         app = QApplication.instance()
         if app:
             current_font = app.font()
-            current_font.setFamily(font_family)
+            current_font.setFamily(font_family_to_set)
             app.setFont(current_font)
     
     def update_library_filters_and_songs(self):
-        """Actualiza los filtros y las canciones en la vista de la biblioteca."""
+        """Actualiza los desplegables de filtros y recarga las canciones en LibraryView
+           respetando los filtros y página actuales."""
         try:
-            # Obtener estadísticas actualizadas
-            all_songs_data, _ = self.music_service.get_songs(page=1, per_page=10000) # Obtener todas las canciones para stats
+            print("[MainWindow] Actualizando filtros de la biblioteca...")
+            artists = self.music_service.get_distinct_artists()
+            genres = self.music_service.get_distinct_genres()
+            total_songs_global = self.music_service.get_total_songs_count()
+            
             stats = {
-                'total_songs': len(all_songs_data),
-                'artists': sorted(list(set(song.artist for song in all_songs_data if song.artist))),
-                'genres': sorted(list(set(song.genre for song in all_songs_data if song.genre))),
-                'years': []  # TODO: Implementar años
+                'total_songs': total_songs_global, 
+                'artists': artists,
+                'genres': genres,
+                'years': [] 
             }
             self.library_view.update_filters(stats)
 
-            # Cargar/Recargar canciones en la vista (podría ser paginado)
-            songs_to_display, total_songs_for_view = self.music_service.get_songs(page=1, per_page=50) # Carga inicial paginada
-            self.library_view.load_songs(songs_to_display, total_songs_for_view)
-            
-            # Actualizar navegación (si es necesario)
-            self.nav_rail.update_library_stats(stats)
+            # Actualizar NavigationRail con iconos
+            if hasattr(self.nav_rail, 'update_library_stats'):
+                library_icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_ComputerIcon)
+                playlist_icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_DriveDVDIcon)
+                settings_icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_FileDialogDetailedView)
+                self.nav_rail.update_library_stats(stats, library_icon, playlist_icon, settings_icon)
 
+            # Recargar las canciones usando los filtros actuales y la página actual de LibraryView
+            self._logger.info(f"Recargando canciones para la página: {self.library_view.current_page} con filtros: {self.current_search_filters}")
+            self.load_songs_for_library_view(page=self.library_view.current_page)
+            
+        except (DatabaseConnectionError, DatabaseTimeoutError) as e:
+            # Manejo específico de errores de base de datos - NO usar QMessageBox modal
+            error_msg = ErrorHandler.handle_db_error(self._logger, e, "updating library filters")
+            self.statusBar().showMessage(error_msg, 5000)
+            
         except Exception as e:
-            self.statusBar().showMessage(f"Error actualizando la biblioteca: {e}", 5000)
-            QMessageBox.critical(self, "Error de Biblioteca", f"No se pudo actualizar la biblioteca: {e}")
+            # Manejo de errores generales - NO usar QMessageBox modal
+            error_msg = ErrorHandler.handle_general_error(self._logger, e, "updating library filters")
+            self.statusBar().showMessage(error_msg, 5000)
 
     def load_library_data(self):
-        """Cargar datos iniciales"""
+        """Cargar datos iniciales de la biblioteca (filtros y primera página)."""
         try:
-            # Obtener estadísticas
-            stats = {
-                'total_songs': len(self.music_service.get_songs(1, 1000)[0]),
-                'artists': list(set(song.artist for song in self.music_service.get_songs(1, 1000)[0])),
-                'genres': list(set(song.genre for song in self.music_service.get_songs(1, 1000)[0] if song.genre)),
-                'years': []  # TODO: Implementar años
-            }
-            
-            # Actualizar navegación
-            self.nav_rail.update_library_stats(stats)
-            
-            # Actualizar filtros de biblioteca
-            self.library_view.update_filters(stats)
-            
-            # Cargar canciones
-            songs, total_pages = self.music_service.get_songs(1, 50)
-            self.library_view.load_songs(songs, len(songs))
+            self._logger.info("Cargando datos iniciales de la biblioteca (filtros y primera página)...")
+            # update_library_filters_and_songs se encargará de:
+            # 1. Poblar los desplegables de filtro (artistas, géneros).
+            # 2. Llamar a load_songs_for_library_view con la página actual de LibraryView (que será 1 por defecto)
+            #    y los filtros actuales (que estarán vacíos por defecto en self.current_search_filters).
+            self.update_library_filters_and_songs()
             
         except Exception as e:
-            self.statusBar().showMessage(f"Error cargando biblioteca: {e}")
+            error_msg = ErrorHandler.handle_general_error(self._logger, e, "loading initial library data")
+            self.statusBar().showMessage(error_msg, 5000)
+    
+    def reset_loading_errors(self):
+        """Resetear el estado de errores para permitir nuevos intentos de carga"""
+        self._loading_circuit_breaker.reset_error_state()
+        self._logger.info("Circuit breaker error state reset")
+        self.statusBar().showMessage("Estado de errores reiniciado. Puede intentar cargar datos nuevamente.", 3000)
             
-    def on_navigation_changed(self, section: str, item: str):
-        """Manejar cambio de navegación"""
-        if section == "library":
-            # Cargar datos solo cuando se navega a la biblioteca por primera vez
-            if not hasattr(self, '_library_loaded'):
-                print("[MainWindow] Cargando datos de biblioteca...")
+    def on_navigation_changed(self, section_key: str, item_key: str):
+        """Cambiar vista según la navegación. Usa item_key para la lógica."""
+        # Limpiar recursos de la vista actual si es una BaseView
+        current_view_widget = self.content_stack.currentWidget()
+        if isinstance(current_view_widget, BaseView):
+            print(f"[MainWindow] Limpiando vista actual: {current_view_widget.__class__.__name__}")
+            current_view_widget.cleanup()
+
+        # Determinar la vista a mostrar basándose en section_key o item_key
+        # El NavigationRail emite el 'section_key' como la categoría principal (ej. 'library')
+        # y 'item_key' como el subítem (ej. 'all_songs') o el mismo que section_key si es un ítem de nivel superior.
+
+        target_widget = None
+        status_message = f"Vista: {item_key}"
+
+        if section_key == "library": 
+            target_widget = self.library_view
+            if not self._is_initial_loading: # Solo cargar si no es la carga inicial
                 self.load_library_data()
-                self._library_loaded = True
-            self.content_stack.setCurrentWidget(self.library_view)
-        elif section == "playlists":
-            self.content_stack.setCurrentWidget(self.playlist_view)
-        elif section == "settings":
-            self.content_stack.setCurrentWidget(self.settings_view)
+            status_message = self.tr("Biblioteca")
+        elif section_key == "playlists": 
+            target_widget = self.playlist_view
+            status_message = self.tr("Playlists")
+        elif section_key == "settings": # O item_key si es un clic directo en "Configuración"
+            target_widget = self.settings_view
+            status_message = self.tr("Configuración")
+        else:
+            print(f"[MainWindow] Sección/item de navegación desconocido: section_key={section_key}, item_key={item_key}")
+            # Podríamos querer mostrar una vista por defecto o no hacer nada
+            # Por ahora, si no se reconoce, no cambiamos de vista y dejamos un mensaje.
+            self.statusBar().showMessage(f"Navegación no reconocida: {item_key}")
+            return # Salir si no se reconoce
+
+        if target_widget:
+            self.content_stack.setCurrentWidget(target_widget)
+            # Refrescar la nueva vista actual si es una BaseView
+            if isinstance(target_widget, BaseView):
+                print(f"[MainWindow] Refrescando nueva vista: {target_widget.__class__.__name__}")
+                target_widget.refresh()
             
+            self.update_component_sizes() # Asegurar que los tamaños se recalculan
+            self.statusBar().showMessage(status_message)
+        else:
+            print(f"[MainWindow] No se encontró un widget para section_key={section_key}, item_key={item_key}")
+
     def on_search_changed(self, title: str, artist: str, genre: str):
-        """Manejar cambio en filtros de búsqueda"""
+        """Manejar cambio en filtros de búsqueda, cargar página 1 de resultados."""
+        # La LibraryView ya resetea su current_page a 1 al emitir search_changed
+        self.current_search_filters = {'title': title, 'artist': artist, 'genre': genre}
+        self.load_songs_for_library_view(page=1) # Cargar página 1 con los nuevos filtros
+            
+    def on_library_page_changed(self, page: int):
+        """Manejar solicitud de cambio de página desde LibraryView."""
+        self.load_songs_for_library_view(page=page)
+
+    def load_songs_for_library_view(self, page: int):
+        """Carga canciones en LibraryView para una página específica y los filtros actuales."""
+        # Control de re-entrada: verificar si podemos ejecutar
+        if not self._loading_circuit_breaker.start_loading():
+            self._logger.warning(f"Load request for page {page} blocked by circuit breaker")
+            return
+
         try:
+            title = self.current_search_filters.get('title', "")
+            artist = self.current_search_filters.get('artist', "")
+            genre = self.current_search_filters.get('genre', "")
+            per_page = self.library_view.items_per_page
+
+            songs = []
+            total_items_for_view = 0
+
             if title or artist or genre:
-                songs, _ = self.music_service.search_songs(
-                    title, artist, genre, 1, 50
+                # Cuando hay filtros, search_songs devuelve (songs_list, total_items_matching_filter)
+                songs, total_items_for_view = self.music_service.search_songs(
+                    title, artist, genre, page, per_page
                 )
             else:
-                songs, _ = self.music_service.get_songs(1, 50)
-                
-            self.library_view.load_songs(songs, len(songs))
-            self.statusBar().showMessage(f"Mostrando {len(songs)} canciones")
+                # Cuando NO hay filtros, get_songs devuelve (songs_list, total_pages_overall)
+                # Necesitamos el total de items global para LibraryView
+                songs, _ = self.music_service.get_songs(page, per_page)
+                total_items_for_view = self.music_service.get_total_songs_count()
+            
+            self.library_view.load_songs(songs, total_items_for_view)
+            self.statusBar().showMessage(f"Mostrando página {page}. {len(songs)} canciones (de {total_items_for_view} encontradas).")
+            
+            # Marcar como exitoso
+            self._loading_circuit_breaker.finish_loading(success=True)
+            
+        except (DatabaseConnectionError, DatabaseTimeoutError) as e:
+            # Manejo específico de errores de base de datos
+            self._loading_circuit_breaker.finish_loading(success=False)
+            error_msg = ErrorHandler.handle_db_error(self._logger, e, f"loading page {page}")
+            self.statusBar().showMessage(error_msg, 5000)
             
         except Exception as e:
-            self.statusBar().showMessage(f"Error en búsqueda: {e}")
-            
+            # Manejo de errores generales
+            self._loading_circuit_breaker.finish_loading(success=False)
+            error_msg = ErrorHandler.handle_loading_error(self._logger, e, page)
+            self.statusBar().showMessage(error_msg, 5000)
+
     def on_song_selection_changed(self, selected_songs: list[dict], selected_index: int):
         """
         Manejar cambio en la selección de canciones.
@@ -343,48 +449,52 @@ class MainWindow(QMainWindow):
         
     def import_folder(self):
         """Importar carpeta de música"""
-        folder_path = QFileDialog.getExistingDirectory(self, "Seleccionar Carpeta de Música", "")
+        folder_path = QFileDialog.getExistingDirectory(self, self.tr("Seleccionar Carpeta de Música"), "")
         if folder_path:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             try:
                 imported, failed = self.music_service.import_folder(folder_path)
-                self.statusBar().showMessage(f"{imported} canciones importadas, {failed} fallaron.", 5000)
-                # Actualizar la vista de la biblioteca después de la importación
+                self.statusBar().showMessage(self.tr(f"{imported} canciones importadas, {failed} fallaron."), 5000)
                 self.update_library_filters_and_songs()
             except FileNotFoundError as e:
-                QMessageBox.warning(self, "Error", str(e))
-                self.statusBar().showMessage(f"Error al importar: {e}", 5000)
+                QMessageBox.warning(self, self.tr("Error"), str(e))
+                self.statusBar().showMessage(self.tr(f"Error al importar: {e}"), 5000)
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Ocurrió un error inesperado: {e}")
-                self.statusBar().showMessage(f"Error inesperado al importar: {e}", 5000)
+                QMessageBox.critical(self, self.tr("Error"), self.tr(f"Ocurrió un error inesperado: {e}"))
+                self.statusBar().showMessage(self.tr(f"Error inesperado al importar: {e}"), 5000)
+            finally:
+                QApplication.restoreOverrideCursor()
         
     def import_files(self):
         """Importar archivos de música"""
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Seleccionar Archivos de Música",
+            self.tr("Seleccionar Archivos de Música"),
             "",
-            "Archivos de Audio (*.mp3 *.wav *.m4a *.flac);;Todos los archivos (*.*)"
+            self.tr("Archivos de Audio (*.mp3 *.wav *.m4a *.flac);;Todos los archivos (*.*)")
         )
         
         if file_paths:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             try:
                 imported, failed = self.music_service.import_files(file_paths)
                 
                 self.statusBar().showMessage(
-                    f"{imported} archivos importados, {failed} fallaron.",
+                    self.tr(f"{imported} archivos importados, {failed} fallaron."),
                     5000
                 )
                 
-                # Actualizar la vista de la biblioteca
                 self.update_library_filters_and_songs()
                 
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    "Error",
-                    f"Error importando archivos: {e}"
+                    self.tr("Error"),
+                    self.tr(f"Error importando archivos: {e}")
                 )
-                self.statusBar().showMessage(f"Error en importación: {e}", 5000)
+                self.statusBar().showMessage(self.tr(f"Error en importación: {e}"), 5000)
+            finally:
+                QApplication.restoreOverrideCursor()
         
     def resizeEvent(self, event: QResizeEvent):
         """Manejar cambio de tamaño de la ventana"""
@@ -411,9 +521,9 @@ class MainWindow(QMainWindow):
         font_size = UIConfig.scale_size(12, self.width(), self.height())
         app = QApplication.instance()
         if app:
-            font = app.font()
-            font.setPointSize(font_size)
-            app.setFont(font)
+            current_font = app.font()
+            current_font.setPointSize(font_size)
+            app.setFont(current_font)
 
     def show_audio_error(self, error_message: str):
         """Muestra un mensaje de error de audio en la barra de estado."""

@@ -5,6 +5,8 @@ Utiliza QMediaPlayer de PyQt6.QtMultimedia.
 
 from PyQt6.QtCore import QObject, pyqtSignal, QUrl, QStandardPaths
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtMultimedia import QMediaMetaData
+from PyQt6.QtGui import QPixmap, QImage
 
 class AudioService(QObject):
     """
@@ -40,6 +42,7 @@ class AudioService(QObject):
         
         print("[AudioService] Inicializando...")
         self._current_song_data = None
+        self._current_album_art = None # Nuevo: para almacenar la carátula actual
         self._playlist = []  # Lista de reproducción actual
         self._current_index = -1  # Índice de la canción actual en la lista
         self._is_intentionally_stopped = True # Para distinguir stop de fin de canción
@@ -54,6 +57,7 @@ class AudioService(QObject):
         self._player.durationChanged.connect(self._handle_duration_changed)
         self._player.errorOccurred.connect(self._handle_player_error)
         self._player.playingChanged.connect(self._handle_playing_changed)
+        self._player.metaDataChanged.connect(self._handle_metadata_changed) # Nueva conexión
 
 
     # --- Métodos de Control ---
@@ -82,6 +86,7 @@ class AudioService(QObject):
 
         self._is_intentionally_stopped = False
         self._current_song_data = song_data
+        self._current_album_art = None # Resetear carátula al cambiar de canción
         
         if self._player.source() == url: # Misma canción, podría ser un play después de pausa
             if self._player.playbackState() == QMediaPlayer.PlaybackState.PausedState:
@@ -92,10 +97,15 @@ class AudioService(QObject):
                  self._player.play()
         else: # Nueva canción
             self._player.setSource(url)
+            # Los metadatos (y carátula) se cargarán y se manejarán en _handle_metadata_changed
             self._player.play()
         
         # Emitir cambio de canción inmediatamente, estado de reproducción lo emitirá _handle_playing_changed
-        self.current_song_changed.emit(self._current_song_data)
+        # La carátula se emitirá cuando los metadatos cambien.
+        # Forzamos una emisión inicial con la carátula actual (que será None al principio)
+        song_data_with_art = self._get_song_data_with_art()
+        print(f"[AudioService] play_song: emitiendo current_song_changed con: {song_data_with_art}") # DEBUG
+        self.current_song_changed.emit(song_data_with_art)
         # self.playback_state_changed.emit(True, self._current_song_data) # Se maneja con playingChanged
 
     def pause(self):
@@ -144,8 +154,8 @@ class AudioService(QObject):
     # --- Métodos de Información ---
 
     def get_current_song_data(self) -> dict | None:
-        """Devuelve los datos de la canción actual o None."""
-        return self._current_song_data
+        """Devuelve los datos de la canción actual o None, incluyendo la carátula."""
+        return self._get_song_data_with_art()
 
     def is_playing(self) -> bool:
         """Devuelve True si el reproductor está actualmente en estado de reproducción."""
@@ -194,6 +204,15 @@ class AudioService(QObject):
         self.previous_available.emit(self.has_previous())
         self.next_available.emit(self.has_next())
 
+    def _get_song_data_with_art(self) -> dict | None:
+        """Helper para combinar _current_song_data con _current_album_art."""
+        if not self._current_song_data:
+            return None
+        
+        data_copy = self._current_song_data.copy() # Evitar modificar el original directamente
+        data_copy['album_art'] = self._current_album_art
+        return data_copy
+
     # --- Slots Privados para Señales de QMediaPlayer ---
 
     def _handle_media_status_changed(self, status: QMediaPlayer.MediaStatus):
@@ -217,6 +236,7 @@ class AudioService(QObject):
             print("[AudioService] Media inválida.")
             self.error_occurred.emit(f"No se pudo cargar el archivo: {self._current_song_data.get('file_path') if self._current_song_data else 'desconocido'}. Formato no soportado o archivo corrupto.")
             self._current_song_data = None
+            self._current_album_art = None # Limpiar carátula
             self.current_song_changed.emit(None)
             self.playback_state_changed.emit(False, None)
             self.song_progress_updated.emit(0,0)
@@ -227,6 +247,7 @@ class AudioService(QObject):
             # Si _current_song_data no es None aquí, es un estado inconsistente.
             if self._is_intentionally_stopped: # Asegurar limpieza final en caso de stop.
                  self._current_song_data = None
+                 self._current_album_art = None # Limpiar carátula
                  self.current_song_changed.emit(None)
                  self.playback_state_changed.emit(False, None)
                  self.song_progress_updated.emit(0,0)
@@ -246,6 +267,7 @@ class AudioService(QObject):
         print(f"[AudioService] Error del reproductor: {error} - {error_string}")
         self.error_occurred.emit(f"Error de reproducción: {error_string}")
         self._current_song_data = None
+        self._current_album_art = None # Limpiar carátula
         self.current_song_changed.emit(None)
         self.playback_state_changed.emit(False, None) # Error implica no reproducción
         self.song_progress_updated.emit(0,0)
@@ -253,33 +275,58 @@ class AudioService(QObject):
     def _handle_playing_changed(self, playing: bool):
         """
         Maneja el cambio de estado de reproducción del QMediaPlayer (señal playingChanged).
-        Esta señal es más directa para el estado play/pause que mediaStatusChanged o playbackStateChanged.
         """
-        print(f"[AudioService] playingChanged: {playing}")
-        if playing:
-            self.playback_state_changed.emit(True, self._current_song_data)
-        else:
-            # Si 'playing' es False, puede ser pausa, stop, o fin de canción.
-            # _is_intentionally_stopped ayuda a distinguir.
-            # Si es stop intencional o fin de canción (que llama a stop), _current_song_data se limpia.
-            # Durante cleanup() o cuando no hay canción activa, enviamos None
-            if (self._player.mediaStatus() == QMediaPlayer.MediaStatus.NoMedia and self._is_intentionally_stopped) or \
-               (self._is_intentionally_stopped or self._player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia):
-                current_data_for_signal = None
+        print(f"[AudioService] _handle_playing_changed: Entrada con playing={playing}")
+
+        current_data_for_signal = self._get_song_data_with_art()
+
+        if not playing:
+            # La reproducción se ha detenido o pausado
+            if self._player.error() != QMediaPlayer.Error.NoError:
+                # Error ocurrido, los datos ya deberían estar limpios por _handle_player_error
+                print("[AudioService] _handle_playing_changed: Error detectado, no se modifican datos aquí.")
+                current_data_for_signal = None # Asegurar que se emite None
+            elif self._is_intentionally_stopped or self._player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+                # Stop intencional o fin de la canción (que también llama a stop())
+                print("[AudioService] _handle_playing_changed: Stop intencional o fin de media.")
+                if self._is_intentionally_stopped: # Solo limpiar si es un stop explícito
+                    self._current_song_data = None
+                    self._current_album_art = None
+                current_data_for_signal = None # En cualquier caso de stop/fin, no hay canción activa para UI
+                
+                # Si es el final real de un stop, emitir current_song_changed(None)
+                if self._player.mediaStatus() == QMediaPlayer.MediaStatus.NoMedia and self._is_intentionally_stopped:
+                    print("[AudioService] _handle_playing_changed: NoMedia y Stop, emitiendo current_song_changed(None)")
+                    self.current_song_changed.emit(None)
+                    self.song_progress_updated.emit(0,0)
+                    self._playlist = []
+                    self._current_index = -1
+                    self._update_navigation_status()
             else:
-                # En otros casos, preservamos _current_song_data o enviamos None
-                current_data_for_signal = self._current_song_data if isinstance(self._current_song_data, dict) else None
-            
-            self.playback_state_changed.emit(False, current_data_for_signal)
-            
-            if self._player.mediaStatus() == QMediaPlayer.MediaStatus.NoMedia and self._is_intentionally_stopped : # Estado final de un stop
-                 self._current_song_data = None # Asegurar que esté limpio
-                 self.current_song_changed.emit(None)
-                 self.song_progress_updated.emit(0,0)
-                 # Resetear lista de reproducción al detener
-                 self._playlist = []
-                 self._current_index = -1
-                 self._update_navigation_status()
+                # Pausado
+                print("[AudioService] _handle_playing_changed: Reproducción pausada.")
+                # current_data_for_signal ya tiene los datos de la canción actual con su arte (o None)
+        else:
+            # La reproducción ha comenzado o se ha reanudado
+            print("[AudioService] _handle_playing_changed: Reproducción iniciada/reanudada.")
+            # current_data_for_signal ya tiene los datos de la canción actual con su arte (o None)
+
+        print(f"[AudioService] _handle_playing_changed: Emitiendo playback_state_changed({playing}, {current_data_for_signal})")
+        self.playback_state_changed.emit(playing, current_data_for_signal)
+
+    def _handle_metadata_changed(self):
+        """Maneja los cambios en los metadatos del medio."""
+        print("[AudioService] Metadata changed.")
+        # Temporalmente deshabilitado el procesamiento de carátulas para evitar errores
+        self._current_album_art = None
+        
+        # Emitir señales con los datos actualizados
+        song_data_with_art = self._get_song_data_with_art()
+        is_playing = self.is_playing()
+        
+        print(f"[AudioService] _handle_metadata_changed: emitiendo señales con datos: {song_data_with_art}")
+        self.current_song_changed.emit(song_data_with_art)
+        self.playback_state_changed.emit(is_playing, song_data_with_art)
 
     def cleanup(self):
         """Limpiar recursos antes de destruir el objeto."""

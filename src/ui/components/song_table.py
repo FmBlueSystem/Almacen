@@ -77,18 +77,14 @@ class SongTable(QFrame):
         self.total_items = 0
         self.currently_playing_row = -1 # Resetear indicador
         
-    def load_songs(self, songs: list, total_items: int = None):
+    def load_songs(self, songs: list):
         """
         Cargar canciones en la tabla
         
         Args:
             songs: Lista de canciones
-            total_items: Total de items disponibles (para paginación)
         """
         self.clear()
-        
-        if total_items is not None:
-            self.total_items = total_items
             
         # Agregar filas
         for song in songs:

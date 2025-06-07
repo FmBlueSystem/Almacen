@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QTreeWidget, QTreeWidgetItem
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 
 class NavigationRail(QFrame):
     """Panel de navegación lateral Material Design 3"""
@@ -52,9 +53,12 @@ class NavigationRail(QFrame):
         
         layout.addWidget(self.nav_tree)
         
-    def update_library_stats(self, stats: dict):
+    def update_library_stats(self, stats: dict, 
+                               library_icon: QIcon = None, 
+                               playlist_icon: QIcon = None, 
+                               settings_icon: QIcon = None):
         """
-        Actualizar estadísticas en el árbol de navegación
+        Actualizar estadísticas en el árbol de navegación y aplicar iconos a secciones principales.
         
         Args:
             stats: Diccionario con estadísticas {
@@ -63,12 +67,18 @@ class NavigationRail(QFrame):
                 'genres': list,
                 'years': list
             }
+            library_icon: QIcon para la sección Biblioteca
+            playlist_icon: QIcon para la sección Playlists
+            settings_icon: QIcon para la sección Configuración
         """
         self.nav_tree.clear()
         
         # Sección Biblioteca
         library = QTreeWidgetItem(self.nav_tree, ["Biblioteca"])
         library.setData(0, Qt.ItemDataRole.UserRole, "library")
+        if library_icon:
+            library.setIcon(0, library_icon)
+            print(f"[NavigationRail] Icono para Biblioteca: {library.icon(0)}, ¿es nulo? {library.icon(0).isNull()}")
         
         # Items de biblioteca con contadores
         items = [
@@ -85,6 +95,9 @@ class NavigationRail(QFrame):
         # Sección Playlists
         playlists = QTreeWidgetItem(self.nav_tree, ["Playlists"])
         playlists.setData(0, Qt.ItemDataRole.UserRole, "playlists")
+        if playlist_icon:
+            playlists.setIcon(0, playlist_icon)
+            print(f"[NavigationRail] Icono para Playlists: {playlists.icon(0)}, ¿es nulo? {playlists.icon(0).isNull()}")
         
         playlist_items = [
             "Recientes",
@@ -99,18 +112,35 @@ class NavigationRail(QFrame):
         # Sección Configuración
         settings = QTreeWidgetItem(self.nav_tree, ["Configuración"])
         settings.setData(0, Qt.ItemDataRole.UserRole, "settings")
+        if settings_icon:
+            settings.setIcon(0, settings_icon)
+            print(f"[NavigationRail] Icono para Configuración: {settings.icon(0)}, ¿es nulo? {settings.icon(0).isNull()}")
         
         self.nav_tree.expandAll()
-        
+
+        # Seleccionar "Biblioteca" por defecto y emitir señal si es la primera carga
+        if self.nav_tree.topLevelItemCount() > 0:
+            library_item_to_select = self.nav_tree.topLevelItem(0) # Asumimos que Biblioteca es el primero
+            if library_item_to_select:
+                self.nav_tree.setCurrentItem(library_item_to_select)
+                # Emitir la señal para que MainWindow actualice la vista al inicio
+                # Podríamos verificar si ya hay un current item o si es una "primera carga"
+                # para no emitir innecesariamente, pero para este caso, emitir está bien.
+                section_key = library_item_to_select.data(0, Qt.ItemDataRole.UserRole)
+                # Para un ítem de nivel superior, el item_key puede ser el mismo que section_key o un default.
+                # Usaremos el section_key como item_key para consistencia con on_item_clicked.
+                self.navigation_changed.emit(section_key, section_key) 
+
     def on_item_clicked(self, item: QTreeWidgetItem, column: int):
         """Manejar click en item de navegación"""
         # Obtener sección padre
         parent = item.parent()
         if parent:
-            section = parent.data(0, Qt.ItemDataRole.UserRole)
-            item_id = item.data(0, Qt.ItemDataRole.UserRole)
+            section_key = parent.data(0, Qt.ItemDataRole.UserRole)
+            item_key = item.data(0, Qt.ItemDataRole.UserRole)
         else:
-            section = item.data(0, Qt.ItemDataRole.UserRole)
-            item_id = "main"
+            # Item de nivel superior (Biblioteca, Playlists, Configuración)
+            section_key = item.data(0, Qt.ItemDataRole.UserRole)
+            item_key = section_key # Usar la section_key también como item_key para consistencia
             
-        self.navigation_changed.emit(section, item_id)
+        self.navigation_changed.emit(section_key, item_key)

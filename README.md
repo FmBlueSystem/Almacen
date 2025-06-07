@@ -99,6 +99,78 @@ pre-commit install
 pytest
 ```
 
+## 🧪 Testing
+
+```bash
+# Ejecutar todos los tests
+pytest
+
+# Tests específicos
+pytest tests/unit/
+pytest tests/integration/
+
+# Tests de prevención de recursión
+pytest tests/unit/test_recursion_prevention.py
+pytest tests/integration/test_recursion_integration.py
+
+# Con coverage
+pytest --cov=src
+
+# Demostración de corrección de RecursionError
+python scripts/test_recursion_fix.py
+```
+
+## 🛡️ Corrección del RecursionError
+
+Este proyecto incluye una corrección comprehensiva para el `RecursionError: maximum recursion depth exceeded` que ocurría en el método `load_songs_for_library_view`.
+
+### Problema Original
+- **Causa:** `QMessageBox.critical()` modal interfería con el bucle de eventos de Qt
+- **Síntoma:** Bucle recursivo durante manejo de errores de base de datos
+- **Trigger:** Eventos `on_search_changed` que se re-disparaban durante modales
+
+### Solución Implementada
+
+#### 🔒 Circuit Breaker Pattern
+- Previene re-entrada en operaciones de carga
+- Implementa cooldown después de errores
+- Permite reset manual del estado
+
+#### ⏱️ Debouncing de Búsquedas
+- Retrasa emisión de señales de búsqueda (300ms)
+- Cancela búsquedas anteriores si llegan nuevas
+- Previene llamadas excesivas a la base de datos
+
+#### 📝 Logging Estructurado
+- Reemplaza `traceback.print_exc()` con logging apropiado
+- Manejo diferenciado de errores de DB vs errores generales
+- Mensajes amigables para el usuario
+
+#### 🚫 Eliminación de Modales Problemáticos
+- Remueve `QMessageBox.critical()` de contextos de carga
+- Usa barra de estado para mensajes de error
+- Mantiene UI responsiva durante errores
+
+### Archivos Principales de la Corrección
+- `src/database/connection.py` - Excepciones personalizadas
+- `src/utils/error_handler.py` - Circuit breaker y utilidades
+- `src/ui/windows/main_window.py` - Control de re-entrada
+- `src/ui/components/content_views/library_view.py` - Debouncing
+- `tests/unit/test_recursion_prevention.py` - Tests unitarios
+- `tests/integration/test_recursion_integration.py` - Tests de integración
+
+### Verificación
+```bash
+# Ejecutar demostración de la corrección
+python scripts/test_recursion_fix.py
+
+# Ejecutar tests específicos de recursión
+pytest tests/unit/test_recursion_prevention.py -v
+pytest tests/integration/test_recursion_integration.py -v
+```
+
+Ver `recursion_error_fix_plan.md` para detalles completos del análisis y implementación.
+
 ## Configuración
 
 La configuración se realiza mediante variables de entorno en el archivo `.env`:

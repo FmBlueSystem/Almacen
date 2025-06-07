@@ -25,7 +25,6 @@ class MusicService:
             db_connection: Conexión a base de datos
         """
         self.songs = SongRepository(db_connection)
-        self.songs.create_table()
         
     def import_folder(self, folder_path: str) -> tuple[int, int]:
         """
@@ -178,11 +177,10 @@ class MusicService:
             per_page: Canciones por página
             
         Returns:
-            tuple[List[Song], int]: Lista de canciones y total de páginas
+            tuple[List[Song], int]: Lista de canciones que coinciden con el filtro y el número total de canciones que coinciden.
         """
-        songs = self.songs.search(title, artist, genre, page, per_page)
-        total_pages = self.songs.get_total_pages(per_page)
-        return songs, total_pages
+        songs, total_items_matching_filter = self.songs.search(title, artist, genre, page, per_page)
+        return songs, total_items_matching_filter
     
     def get_songs(self, page: int = 1, per_page: int = 50) -> tuple[List[Song], int]:
         """
@@ -198,3 +196,15 @@ class MusicService:
         songs = self.songs.get_all(page, per_page)
         total_pages = self.songs.get_total_pages(per_page)
         return songs, total_pages
+
+    def get_distinct_artists(self) -> List[str]:
+        """Obtener lista de artistas distintos para filtros."""
+        return self.songs.get_distinct_artists()
+
+    def get_distinct_genres(self) -> List[str]:
+        """Obtener lista de géneros distintos para filtros."""
+        return self.songs.get_distinct_genres()
+
+    def get_total_songs_count(self) -> int:
+        """Obtener el número total de canciones."""
+        return self.songs.get_total_songs_count()
