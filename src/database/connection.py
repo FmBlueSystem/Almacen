@@ -4,7 +4,6 @@ Módulo de conexión a base de datos SQLite
 
 import sqlite3
 import logging
-import time
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -41,7 +40,7 @@ class DatabaseConnection:
     def get_connection(self):
         """
         Context manager para obtener conexión a la base de datos.
-        Reutiliza la conexión si ya existe una en el mismo hilo.
+        Siempre abre una nueva conexión y la cierra al finalizar.
         
         Yields:
             sqlite3.Connection: Conexión activa
@@ -50,11 +49,6 @@ class DatabaseConnection:
             DatabaseConnectionError: Error al conectar a la base de datos
             DatabaseTimeoutError: Timeout al conectar a la base de datos
         """
-        # Si ya hay una conexión activa en este hilo, la reutilizamos
-        if hasattr(self._local, 'connection') and self._local.connection is not None:
-            yield self._local.connection
-            return
-
         conn = None
         try:
             # Conectar con timeout explícito
