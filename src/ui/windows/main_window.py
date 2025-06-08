@@ -47,6 +47,8 @@ class MainWindow(QMainWindow):
         # Logger y gestor de datos
         self._logger = ErrorHandler.setup_logging(__name__)
         self.library_manager = LibraryDataManager(self.music_service, self._logger)
+        # Exponer el circuit breaker internamente para pruebas/compatibilidad
+        self._loading_circuit_breaker = self.library_manager._loading_circuit_breaker
         
         print("[MainWindow] Iniciando configuración...")
         self.init_ui()

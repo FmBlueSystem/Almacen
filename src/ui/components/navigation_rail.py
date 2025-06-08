@@ -17,6 +17,7 @@ class NavigationRail(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("navigationRail")
+        self._initialized = False
         self.init_ui()
         
     def init_ui(self):
@@ -118,18 +119,17 @@ class NavigationRail(QFrame):
         
         self.nav_tree.expandAll()
 
-        # Seleccionar "Biblioteca" por defecto y emitir señal si es la primera carga
+        # Seleccionar "Biblioteca" por defecto solo la primera vez
         if self.nav_tree.topLevelItemCount() > 0:
-            library_item_to_select = self.nav_tree.topLevelItem(0) # Asumimos que Biblioteca es el primero
+            library_item_to_select = self.nav_tree.topLevelItem(0)
             if library_item_to_select:
                 self.nav_tree.setCurrentItem(library_item_to_select)
-                # Emitir la señal para que MainWindow actualice la vista al inicio
-                # Podríamos verificar si ya hay un current item o si es una "primera carga"
-                # para no emitir innecesariamente, pero para este caso, emitir está bien.
-                section_key = library_item_to_select.data(0, Qt.ItemDataRole.UserRole)
-                # Para un ítem de nivel superior, el item_key puede ser el mismo que section_key o un default.
-                # Usaremos el section_key como item_key para consistencia con on_item_clicked.
-                self.navigation_changed.emit(section_key, section_key) 
+                if not self._initialized:
+                    # Emitir la señal inicial para que MainWindow configure la vista
+                    section_key = library_item_to_select.data(0, Qt.ItemDataRole.UserRole)
+                    # Para un ítem de nivel superior, el item_key puede ser el mismo que section_key
+                    self.navigation_changed.emit(section_key, section_key)
+                    self._initialized = True
 
     def on_item_clicked(self, item: QTreeWidgetItem, column: int):
         """Manejar click en item de navegación"""
