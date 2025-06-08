@@ -188,4 +188,7 @@ config.local.py
 # Application specific
 assets/generated/
 cache/
-uploads/ ._*
+uploads/
+
+# macOS resource fork files
+._*
