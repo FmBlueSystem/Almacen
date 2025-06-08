@@ -4,9 +4,9 @@
 
 def get_fonts() -> dict:
     """Return MD3 font definitions."""
-    default_font = "Roboto Flex"
+    default_font = "Roboto"
     fallback_font = "Arial"
-    font_family = f"'{default_font}', {fallback_font}"
+    font_family = f"{default_font}, {fallback_font}"
 
     return {
         # Display

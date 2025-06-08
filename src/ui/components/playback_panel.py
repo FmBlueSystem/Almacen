@@ -36,94 +36,8 @@ class PlaybackPanel(QFrame):
         self.current_time_ms = 0
         self.total_time_ms = 0
         
-        # Estilo base del panel
-        self.setStyleSheet("""
-            QFrame#playbackPanel {
-                background-color: #f3e8ff;
-                border-top: 1px solid #d8b4fe;
-                padding: 8px;
-            }
-            QLabel#playingTitle {
-                color: #1e293b;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QLabel#playingArtist {
-                color: #64748b;
-                font-size: 14px;
-            }
-            QPushButton#playButton {
-                background-color: #7c3aed;
-                color: white;
-                border: none;
-                border-radius: 22px;
-                font-size: 18px;
-                padding: 8px;
-                width: 44px;
-                height: 44px;
-            }
-            QPushButton#playButton:hover {
-                background-color: #6d28d9;
-            }
-            QPushButton#playButton:pressed {
-                background-color: #5b21b6;
-            }
-            QPushButton#playbackButton {
-                background-color: transparent;
-                border: none;
-                border-radius: 16px;
-                font-size: 16px;
-                padding: 4px;
-                width: 32px;
-                height: 32px;
-            }
-            QPushButton#playbackButton:hover {
-                background-color: #ddd6fe;
-            }
-            QPushButton#playbackButton:pressed {
-                background-color: #c4b5fd;
-            }
-            QPushButton#playbackButton:disabled {
-                color: #94a3b8;
-            }
-            QSlider::groove:horizontal {
-                border: none;
-                background: #e2e8f0;
-                height: 4px;
-                border-radius: 2px;
-            }
-            QSlider::sub-page:horizontal {
-                background: #7c3aed;
-                border-radius: 2px;
-            }
-            QSlider::add-page:horizontal {
-                background: #e2e8f0;
-                border-radius: 2px;
-            }
-            QSlider::handle:horizontal {
-                background: #7c3aed;
-                width: 12px;
-                height: 12px;
-                margin: -4px 0;
-                border-radius: 6px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #6d28d9;
-                width: 16px;
-                height: 16px;
-                margin: -6px 0;
-                border-radius: 8px;
-            }
-            QLabel#timeLabel {
-                color: #64748b;
-                font-size: 12px;
-                min-width: 45px;
-            }
-            QLabel#volumeIcon {
-                color: #64748b;
-                font-size: 16px;
-            }
-        """)
+        # Los estilos se aplican desde MD3Theme
+        pass
         
         self.init_ui()
         
@@ -154,14 +68,8 @@ class PlaybackPanel(QFrame):
         self.album_art_label.setObjectName("albumArtLabel")
         self.album_art_label.setFixedSize(QSize(64, 64))
         self.album_art_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Estilo visual: borde, fondo y radio
-        self.album_art_label.setStyleSheet("""
-            QLabel#albumArtLabel {
-                border: 2px solid #d8b4fe;
-                border-radius: 8px;
-                background: #f3e8ff;
-            }
-        """)
+        # Los estilos se aplican desde MD3Theme
+        pass
         # Placeholder visual (icono PNG)
         placeholder_path = os.path.join(os.path.dirname(__file__), '../../../assets/icons/album_placeholder.png')
         if os.path.exists(placeholder_path):
@@ -176,7 +84,7 @@ class PlaybackPanel(QFrame):
             ))
         else:
             self.album_art_label.setText("🎵")
-        self.album_art_label.setStyleSheet(self.album_art_label.styleSheet() + "font-size: 24px; color: #7c3aed;")
+        pass
         song_info_main_layout.addWidget(self.album_art_label)
 
         # Contenedor para Título y Artista
@@ -401,9 +309,10 @@ class PlaybackPanel(QFrame):
         """Alternar modo aleatorio"""
         self.shuffle_enabled = not self.shuffle_enabled
         self.shuffle_button.setText("🔀")
-        self.shuffle_button.setStyleSheet(
-            f"background-color: {'#7c3aed' if self.shuffle_enabled else 'transparent'}; color: {'white' if self.shuffle_enabled else '#1e293b'};"
-        )
+        if self.shuffle_enabled:
+            self.shuffle_button.setProperty("checked", True)
+        else:
+            self.shuffle_button.setProperty("checked", False)
         self.shuffle_button.setToolTip(f"Aleatorio [S]: {'On' if self.shuffle_enabled else 'Off'}")
         self.shuffle_mode_changed.emit(self.shuffle_enabled)
 

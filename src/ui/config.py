@@ -19,10 +19,9 @@ class UIConfig:
     BASE_RESOLUTION = config.get('BASE_RESOLUTION', f"{config.window_width}x{config.window_height}")
 
     # Familia de fuente
-    FONT_FAMILY = config.get('FONT_FAMILY', 'Roboto')
+    FONT_FAMILY = config.get('FONT_FAMILY', 'Segoe UI, Helvetica, Arial, sans-serif')
     
     # Rutas
-    FONT_PATH = Path('assets/fonts/Roboto-Regular.ttf')
     ICONS_PATH = Path('assets/icons')
     
     @classmethod

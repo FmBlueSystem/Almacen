@@ -188,4 +188,4 @@ config.local.py
 # Application specific
 assets/generated/
 cache/
-uploads/ 
+uploads/ ._*

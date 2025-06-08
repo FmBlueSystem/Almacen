@@ -2,10 +2,9 @@
 Sistema de estilos Material Design 3
 """
 
-# Implements Dart AI Task: Refactor theme module
-
 from .color_scheme import get_theme_colors
 from .typography import get_fonts as typography_fonts
+from ..config import UIConfig
 
 class MD3Theme:
     """Sistema de estilos Material Design 3"""
@@ -57,30 +56,14 @@ class MD3Theme:
             
         return f"""
             /* Reset global styles */
-            @font-face {{
-                font-family: "Roboto Flex";
-                src: url("assets/fonts/RobotoFlex-Regular.ttf");
-            }}
-            
             * {{
                 color: {colors["on-surface"]};
                 background-color: {colors["surface"]};
                 selection-background-color: {colors["primary-container"]};
                 selection-color: {colors["on-primary-container"]};
-                font-family: "Roboto Flex", Arial;
+                font-family: {UIConfig.FONT_FAMILY};
             }}
             
-            /* Animaciones */
-            {MD3Theme._get_ripple_animation()}
-            
-            /* Transiciones globales */
-            * {{
-                transition: background-color 0.2s ease,
-                            color 0.2s ease,
-                            border-color 0.2s ease,
-                            box-shadow 0.2s ease;
-            }}
-
             /* Estilos globales MD3 */
             QMainWindow {{
                 background-color: {colors["surface"]};
@@ -302,15 +285,13 @@ class MD3Theme:
             }}
             
             QPushButton#primaryButton:hover {{
-                background-color: {colors["primary"]};
-                box-shadow: 0 2px 4px {colors["shadow"]};
-                transform: translateY(-1px);
+                background-color: {colors["primary-container"]};
+                color: {colors["on-primary-container"]};
             }}
             
             QPushButton#primaryButton:pressed {{
                 background-color: {colors["primary"]};
-                transform: scale(0.98);
-                box-shadow: 0 1px 2px {colors["shadow"]};
+                color: {colors["on-primary"]};
             }}
             
             QPushButton#primaryButton:focus {{
@@ -321,7 +302,6 @@ class MD3Theme:
             QPushButton#primaryButton:disabled {{
                 background-color: {colors["surface-variant"]};
                 color: {colors["outline"]};
-                box-shadow: none;
             }}
             
             QPushButton#secondaryButton {{
@@ -353,7 +333,6 @@ class MD3Theme:
                 background-color: {colors["surface"]};
                 border-color: {colors["primary"]};
                 color: {colors["on-surface"]};
-                box-shadow: 0 2px 4px {colors["shadow"]};
             }}
             
             QComboBox#filterCombo {{
@@ -420,10 +399,40 @@ class MD3Theme:
                 background-color: {colors["secondary-container"]};
                 color: {colors["on-secondary-container"]};
             }}
+
+            /* Album Art Label */
+            QLabel#albumArtLabel {{
+                border: 2px solid {colors["outline"]};
+                border-radius: 8px;
+                background-color: {colors["surface-variant"]};
+                font-size: 24px;
+                color: {colors["primary"]};
+            }}
+
+            /* Loading and Empty States */
+            QProgressBar#loadingBar {{
+                border: none;
+                background-color: {colors["surface-variant"]};
+                border-radius: 1px;
+            }}
+
+            QProgressBar#loadingBar::chunk {{
+                background-color: {colors["primary"]};
+                border-radius: 1px;
+            }}
+
+            QLabel#emptyState {{
+                color: {colors["on-surface-variant"]};
+                font-size: 16px;
+                font-weight: 500;
+                padding: 24px;
+                background-color: {colors["surface-variant"]};
+                border-radius: 12px;
+                margin: 24px;
+            }}
         """
     
     @staticmethod
     def get_fonts() -> dict:
         """Obtener definiciones de fuentes MD3"""
-        # Delegar a módulo separado para reducir tamaño del archivo
         return typography_fonts()
