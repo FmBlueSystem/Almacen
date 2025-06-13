@@ -2,11 +2,13 @@
 
 # Implements Dart AI Task: Extract typography configuration
 
+from ..config import UIConfig
+
+
 def get_fonts() -> dict:
-    """Return MD3 font definitions."""
-    default_font = "Roboto"
-    fallback_font = "Arial"
-    font_family = f"{default_font}, {fallback_font}"
+    """Return MD3 font definitions using the configured font family."""
+    # Centralizar la familia de fuentes para toda la aplicación
+    font_family = UIConfig.FONT_FAMILY
 
     return {
         # Display
