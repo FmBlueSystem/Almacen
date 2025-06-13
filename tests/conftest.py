@@ -3,6 +3,7 @@ Configuración global de pytest
 """
 
 import sys
+import os
 import pytest
 from pathlib import Path
 
@@ -53,6 +54,8 @@ def qapp():
     """Provide QApplication instance for Qt tests"""
     pytest.importorskip("PyQt6")
     from PyQt6.QtWidgets import QApplication
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     app = QApplication.instance()
     if app is None:
